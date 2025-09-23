@@ -25,6 +25,9 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
     const [profile, setProfile] = useState(null);
     const [wallet, setWallet] = useState({ balance: 0, coins: 0, gamesWon: 0 });
     const [adminPost, setAdminPost] = useState(null);
+    const [debugOpen, setDebugOpen] = useState(false);
+    const [lastWsEvent, setLastWsEvent] = useState(null);
+    const [selectionConfirmed, setSelectionConfirmed] = useState(false);
 
     // Update stake when selectedStake prop changes
     useEffect(() => {
@@ -41,6 +44,7 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
     const { connected, send } = useGameSocket(wsUrl, {
         token: sessionId,
         onEvent: (evt) => {
+            try { setLastWsEvent(evt); } catch (_) { }
             switch (evt.type) {
                 case 'lobby_info':
                     setPhase(evt.payload.phase);
@@ -125,6 +129,7 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
                     if (!myCard && confirmedCard) {
                         setMyCard({ id: confirmedCard });
                     }
+                    setSelectionConfirmed(true);
                     break;
                 }
                 default:
@@ -300,10 +305,31 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
                 onRefresh={() => window.location.reload()}
                 playersCount={playersCount}
                 walletBalance={Number(wallet?.balance || 0)}
-                isWatchingOnly={!myCard}
+                isWatchingOnly={!myCard && !selectionConfirmed}
                 gamePhase={phase === 'running' ? 'playing' : (phase === 'announce' ? 'finished' : 'waiting')}
                 gameId={gameId}
             />
+            {/* Dev-only floating debug toggle */}
+            <button
+                onClick={() => setDebugOpen(v => !v)}
+                style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 9999 }}
+                className="bg-black/60 text-white rounded-full w-10 h-10 text-xl"
+                aria-label="Toggle debug"
+            >🐞</button>
+            {debugOpen && (
+                <div style={{ position: 'fixed', bottom: 80, right: 20, left: 20, zIndex: 9999 }} className="bg-black/80 text-white p-3 rounded-xl text-xs max-h-60 overflow-auto">
+                    <div><strong>phase:</strong> {phase}</div>
+                    <div><strong>gameId:</strong> {String(gameId)}</div>
+                    <div><strong>players:</strong> {playersCount}</div>
+                    <div><strong>stake:</strong> {String(stake)}</div>
+                    <div><strong>wallet.balance:</strong> {String(wallet?.balance)}</div>
+                    <div><strong>selectedCartela:</strong> {String(myCard?.id || selectedCartela || '')}</div>
+                    <div><strong>selectionConfirmed:</strong> {String(selectionConfirmed)}</div>
+                    <div><strong>isWatchingOnly:</strong> {String(!myCard && !selectionConfirmed)}</div>
+                    <div className="mt-2"><strong>last WS event:</strong> {lastWsEvent?.type || '(none)'}</div>
+                    <pre className="whitespace-pre-wrap break-words">{lastWsEvent ? JSON.stringify(lastWsEvent, null, 2) : ''}</pre>
+                </div>
+            )}
             <WinnerAnnounce open={showWinners} onClose={() => setShowWinners(false)} winners={winners} />
             <BottomNav current="game" onNavigate={onNavigate} />
         </>
