@@ -16,6 +16,7 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
     const [availableCards, setAvailableCards] = useState([]);
     const [called, setCalled] = useState([]);
     const [myCard, setMyCard] = useState(null);
+    const [pendingSelectedCardNumber, setPendingSelectedCardNumber] = useState(null);
     const [endsAt, setEndsAt] = useState(null);
     const [winners, setWinners] = useState([]);
     const [showWinners, setShowWinners] = useState(false);
@@ -64,7 +65,8 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
                 case 'game_started':
                     setPhase('running');
                     setGameId(evt.payload.gameId);
-                    setMyCard(evt.payload.card);
+                    // Prefer server card; fallback to pending selection if server is delayed
+                    setMyCard(evt.payload.card || (pendingSelectedCardNumber ? { id: pendingSelectedCardNumber } : null));
                     setCalled(evt.payload.called || []);
                     setPlayersCount(Number(evt.payload.playersCount || playersCount));
                     setEndsAt(null);
@@ -100,7 +102,8 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
                 case 'snapshot':
                     setPhase(evt.payload.phase);
                     setGameId(evt.payload.gameId || null);
-                    setMyCard(evt.payload.card || null);
+                    // Keep existing or pending card if snapshot lacks it
+                    setMyCard(evt.payload.card || myCard || (pendingSelectedCardNumber ? { id: pendingSelectedCardNumber } : null));
                     setCalled(evt.payload.called || evt.payload.calledNumbers || []);
                     setAvailableCards(evt.payload.availableCards || []);
                     setEndsAt(evt.payload.endsAt || evt.payload.nextStartAt || null);
@@ -116,6 +119,11 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
                         setPlayersCount(serverCount);
                     } else {
                         setPlayersCount(prev => (prev > 0 ? prev + 1 : 1));
+                    }
+                    // Ensure player is not forced into watching-only if they selected a card and have balance
+                    const confirmedCard = evt.payload?.cardNumber || pendingSelectedCardNumber;
+                    if (!myCard && confirmedCard) {
+                        setMyCard({ id: confirmedCard });
                     }
                     break;
                 }
@@ -134,6 +142,7 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
 
     const selectCard = (cardNumber) => {
         if (!gameId) return;
+        setPendingSelectedCardNumber(cardNumber);
         send('select_card', { gameId, cardNumber });
     };
 
