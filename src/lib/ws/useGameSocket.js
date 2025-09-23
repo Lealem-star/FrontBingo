@@ -30,6 +30,7 @@ export function useGameSocket(url, { onEvent, token } = {}) {
             ws.onmessage = (e) => {
                 try {
                     const evt = JSON.parse(e.data);
+                    try { console.debug('[WS] event:', evt.type, evt.payload); } catch { }
                     setLastEvent(evt);
                     onEvent && onEvent(evt);
                 } catch { }

@@ -38,7 +38,8 @@ export default function GameLayout({
     const hasInsufficientFunds = numericWalletBalance < numericStake;
 
     // Determine if user should be in watching-only mode
-    const shouldWatchOnly = isWatchingOnly || hasInsufficientFunds || gamePhase === 'finished';
+    const hasSelectedCartela = !!selectedCartela;
+    const shouldWatchOnly = (!hasSelectedCartela) || isWatchingOnly || hasInsufficientFunds || gamePhase === 'finished';
 
     // Show "Get ready for the next number!" for 3 seconds when game starts
     useEffect(() => {
