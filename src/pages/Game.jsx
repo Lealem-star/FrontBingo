@@ -312,12 +312,12 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
             {/* Dev-only floating debug toggle */}
             <button
                 onClick={() => setDebugOpen(v => !v)}
-                style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 9999 }}
+                style={{ position: 'fixed', top: 20, left: 20, zIndex: 9999 }}
                 className="bg-black/60 text-white rounded-full w-10 h-10 text-xl"
                 aria-label="Toggle debug"
             >🐞</button>
             {debugOpen && (
-                <div style={{ position: 'fixed', bottom: 80, right: 20, left: 20, zIndex: 9999 }} className="bg-black/80 text-white p-3 rounded-xl text-xs max-h-60 overflow-auto">
+                <div style={{ position: 'fixed', top: 70, right: 20, left: 20, zIndex: 9999 }} className="bg-black/80 text-white p-3 rounded-xl text-xs max-h-60 overflow-auto">
                     <div><strong>phase:</strong> {phase}</div>
                     <div><strong>gameId:</strong> {String(gameId)}</div>
                     <div><strong>players:</strong> {playersCount}</div>
