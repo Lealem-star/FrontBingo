@@ -58,15 +58,8 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
                     }
                     break;
                 case 'registration_closed':
+                    // Return to registration and rely on server to drive countdown/opening
                     setPhase('registration');
-                    // Check if we need to restart countdown (no players selected cartelas)
-                    if (availableCards.length === 0) {
-                        // Restart registration phase with new countdown
-                        setTimeout(() => {
-                            setPhase('registration');
-                            setEndsAt(Date.now() + 15000); // 15 seconds countdown
-                        }, 1000);
-                    }
                     break;
                 case 'game_started':
                     setPhase('running');
@@ -300,6 +293,7 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
                 walletBalance={Number(wallet?.balance || 0)}
                 isWatchingOnly={!myCard}
                 gamePhase={phase === 'running' ? 'playing' : (phase === 'announce' ? 'finished' : 'waiting')}
+                gameId={gameId}
             />
             <WinnerAnnounce open={showWinners} onClose={() => setShowWinners(false)} winners={winners} />
             <BottomNav current="game" onNavigate={onNavigate} />
