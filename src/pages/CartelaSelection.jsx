@@ -49,6 +49,10 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                 case 'snapshot': {
                     if (evt.type === 'snapshot' && evt.payload?.phase) {
                         setPhase(evt.payload.phase);
+                        // If we joined mid-registration via snapshot, auto-send queued selection
+                        if (evt.payload.phase === 'registration' && pendingSelection) {
+                            try { send('select_card', { cardNumber: pendingSelection }); } catch (_) { }
+                        }
                     }
                     const serverTaken = evt.payload?.takenCards || [];
                     if (Array.isArray(serverTaken)) setTakenCards(serverTaken);
