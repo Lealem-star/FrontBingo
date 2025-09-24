@@ -16,6 +16,8 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
     const [toastPosition, setToastPosition] = useState({ x: 0, y: 0 });
     const { sessionId } = useAuth();
     const [takenCards, setTakenCards] = useState([]);
+    const [phase, setPhase] = useState('waiting');
+    const [pendingSelection, setPendingSelection] = useState(null);
 
     // Fetch wallet balance
     useEffect(() => {
@@ -37,14 +39,26 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
         onEvent: (evt) => {
             switch (evt.type) {
                 case 'registration_open':
+                    setPhase('registration');
+                    // If user clicked while waiting, auto-send now
+                    if (pendingSelection) {
+                        try { send('select_card', { cardNumber: pendingSelection }); } catch (_) { }
+                    }
+                // fallthrough to update taken cards if provided
                 case 'registration_update':
                 case 'snapshot': {
+                    if (evt.type === 'snapshot' && evt.payload?.phase) {
+                        setPhase(evt.payload.phase);
+                    }
                     const serverTaken = evt.payload?.takenCards || [];
                     if (Array.isArray(serverTaken)) setTakenCards(serverTaken);
                     const yourSel = evt.payload?.yourSelection;
                     if (yourSel) setSelectedCartela(yourSel);
                     break;
                 }
+                case 'game_cancelled':
+                    setPhase('waiting');
+                    break;
                 case 'selection_confirmed':
                     if (evt.payload?.cardNumber) setSelectedCartela(evt.payload.cardNumber);
                     break;
@@ -109,11 +123,20 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
         // If taken by someone else, ignore
         if (takenCards.includes(cartelaNumber)) return;
 
+        // If not in registration, request it and queue the selection
+        if (phase !== 'registration') {
+            setPendingSelection(cartelaNumber);
+            setSelectedCartela(cartelaNumber);
+            setSelectionCount(prev => prev + 1);
+            setHasSelectedPlayers(true);
+            try { send('start_registration', {}); } catch (_) { }
+            return;
+        }
+
+        // In registration: send immediately
         setSelectedCartela(cartelaNumber);
         setSelectionCount(prev => prev + 1);
         setHasSelectedPlayers(true);
-
-        // Inform server about selection
         try { send('select_card', { cardNumber: cartelaNumber }); } catch (_) { }
     };
 

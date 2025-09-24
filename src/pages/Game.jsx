@@ -28,6 +28,7 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
     const [debugOpen, setDebugOpen] = useState(false);
     const [lastWsEvent, setLastWsEvent] = useState(null);
     const [selectionConfirmed, setSelectionConfirmed] = useState(false);
+    const [requestedRegistration, setRequestedRegistration] = useState(false);
 
     // Update stake when selectedStake prop changes
     useEffect(() => {
@@ -56,6 +57,10 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
                     setAvailableCards(evt.payload.availableCards || []);
                     setEndsAt(evt.payload.endsAt);
                     setPlayersCount(Number(evt.payload.playersCount || 0));
+                    // If user selected a cartella before a gameId existed, auto-send now
+                    if (pendingSelectedCardNumber) {
+                        try { send('select_card', { gameId: evt.payload.gameId, cardNumber: pendingSelectedCardNumber }); } catch (_) { }
+                    }
                     break;
                 case 'registration_update':
                     if (typeof evt.payload.timeLeft === 'number') {
@@ -112,6 +117,10 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
                     setAvailableCards(evt.payload.availableCards || []);
                     setEndsAt(evt.payload.endsAt || evt.payload.nextStartAt || null);
                     setPlayersCount(Number(evt.payload.playersCount || playersCount));
+                    // If room is idle (waiting), proactively request registration to start
+                    if (stake && evt.payload.phase === 'waiting' && !requestedRegistration) {
+                        try { send('start_registration', {}); setRequestedRegistration(true); } catch (_) { }
+                    }
                     break;
                 case 'players_update':
                     setPlayersCount(Number(evt.payload.playersCount || 0));
@@ -146,9 +155,13 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
     };
 
     const selectCard = (cardNumber) => {
-        if (!gameId) return;
         setPendingSelectedCardNumber(cardNumber);
-        send('select_card', { gameId, cardNumber });
+        // If we already have a gameId, send immediately; otherwise queue
+        if (gameId) {
+            send('select_card', { gameId, cardNumber });
+        }
+        // Optimistically reflect selection in UI
+        if (!myCard) setMyCard({ id: cardNumber });
     };
 
     const claimBingo = () => {
@@ -291,12 +304,14 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
     }
 
     // Main game screen - Using separate component
+    const hasSelectedCartelaId = Boolean(myCard?.id || selectedCartela || pendingSelectedCardNumber);
+
     return (
         <>
             <GameLayout
                 stake={stake}
                 called={called}
-                selectedCartela={myCard?.id || selectedCartela}
+                selectedCartela={myCard?.id || selectedCartela || pendingSelectedCardNumber}
                 onClaimBingo={claimBingo}
                 onNavigate={onNavigate}
                 onLeave={handleLeave}
@@ -305,7 +320,7 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
                 onRefresh={() => window.location.reload()}
                 playersCount={playersCount}
                 walletBalance={Number(wallet?.balance || 0)}
-                isWatchingOnly={!myCard && !selectionConfirmed}
+                isWatchingOnly={!hasSelectedCartelaId && !selectionConfirmed}
                 gamePhase={phase === 'running' ? 'playing' : (phase === 'announce' ? 'finished' : 'waiting')}
                 gameId={gameId}
             />
