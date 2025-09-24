@@ -127,17 +127,12 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
         // If taken by someone else, ignore
         if (takenCards.includes(cartelaNumber)) return;
 
-        // If not in registration, request it and queue the selection
+        // If not in registration, still send selection now; server will open registration and accept it
         if (phase !== 'registration') {
             setPendingSelection(cartelaNumber);
-            setSelectedCartela(cartelaNumber);
-            setSelectionCount(prev => prev + 1);
-            setHasSelectedPlayers(true);
-            try { send('start_registration', {}); } catch (_) { }
-            return;
         }
 
-        // In registration: send immediately
+        // Send selection immediately (works in both waiting and registration)
         setSelectedCartela(cartelaNumber);
         setSelectionCount(prev => prev + 1);
         setHasSelectedPlayers(true);
