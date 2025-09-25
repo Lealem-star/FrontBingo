@@ -29,7 +29,7 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
     const [profile, setProfile] = useState(null);
     const [wallet, setWallet] = useState({ balance: 0, coins: 0, gamesWon: 0 });
     const [adminPost, setAdminPost] = useState(null);
-    const [debugOpen, setDebugOpen] = useState(true); // Show by default on mobile
+    const [debugOpen, setDebugOpen] = useState(false); // Hide by default
     const [lastWsEvent, setLastWsEvent] = useState(null);
     const [selectionConfirmed, setSelectionConfirmed] = useState(false);
     const [requestedRegistration, setRequestedRegistration] = useState(false);
@@ -68,7 +68,7 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
     }, [stake]);
 
     const { connected, send } = useGameSocket(wsUrl, {
-        token: sessionId || 'test-token', // Fallback token for testing
+        token: sessionId, // Use real session token
         onEvent: (evt) => {
             try {
                 setLastWsEvent(evt);
@@ -305,13 +305,8 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
                     <h1 className="text-center text-3xl md:text-4xl font-extrabold leading-tight mt-6 text-white">
                         Welcome to Love Bingo
                     </h1>
-                    <div className="text-center text-white mt-4 bg-red-500 p-4 rounded-lg">
-                        <p><strong>TEST: Component is rendering!</strong></p>
-                        <p>Stake: {stake || 'null'}</p>
-                        <p>Phase: {phase}</p>
-                        <p>SessionId: {sessionId ? 'present' : 'missing'}</p>
-                        <p>User: {user ? 'present' : 'missing'}</p>
-                        <p>Loading: {isLoading ? 'true' : 'false'}</p>
+                    <div className="text-center text-white mt-4">
+                        <p>Choose your stake amount to start playing</p>
                     </div>
                 </header>
 
@@ -366,63 +361,6 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
 
                 <BottomNav current="game" onNavigate={onNavigate} />
 
-                {/* Debug Panel for initial screen */}
-                {debugOpen && (
-                    <div style={{
-                        position: 'fixed',
-                        top: 10,
-                        left: 10,
-                        right: 10,
-                        zIndex: 9999,
-                        backgroundColor: 'rgba(0,0,0,0.9)',
-                        color: 'white',
-                        padding: '10px',
-                        fontSize: '12px',
-                        borderRadius: '10px',
-                        maxHeight: '300px',
-                        overflow: 'auto'
-                    }}>
-                        <div className="flex justify-between items-center mb-2">
-                            <strong style={{ fontSize: '14px' }}>🐞 Debug</strong>
-                            <button
-                                onClick={() => setDebugOpen(false)}
-                                style={{
-                                    backgroundColor: 'red',
-                                    color: 'white',
-                                    border: 'none',
-                                    padding: '3px 8px',
-                                    borderRadius: '3px',
-                                    fontSize: '10px'
-                                }}
-                            >
-                                ✕
-                            </button>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px', marginBottom: '8px', fontSize: '10px' }}>
-                            <div><strong>phase:</strong> {phase}</div>
-                            <div><strong>connected:</strong> {String(connected)}</div>
-                            <div><strong>sessionId:</strong> {String(sessionId ? 'present' : 'missing')}</div>
-                            <div><strong>stake:</strong> {String(stake || 'null')}</div>
-                        </div>
-
-                        <div style={{ marginTop: '8px', fontSize: '10px' }}>
-                            <strong>Events:</strong>
-                            <div style={{
-                                backgroundColor: '#333',
-                                padding: '5px',
-                                borderRadius: '3px',
-                                marginTop: '3px',
-                                maxHeight: '100px',
-                                overflow: 'auto'
-                            }}>
-                                {debugMessages.slice(-5).map((msg, i) => (
-                                    <div key={i} style={{ color: '#90EE90', marginBottom: '1px' }}>{msg}</div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                )}
             </div>
         );
     }
