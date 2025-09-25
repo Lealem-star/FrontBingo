@@ -203,6 +203,11 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
         setDebugMessages(prev => [...prev.slice(-9), `${timestamp}: ${message}`]);
     };
 
+    // Add initial debug message
+    useEffect(() => {
+        addDebugMessage(`Game render: sessionId=${!!sessionId}, user=${!!user}, isLoading=${isLoading}, selectedStake=${selectedStake}`);
+    }, [sessionId, user, isLoading, selectedStake]);
+
     const selectCard = (cardNumber) => {
         const debugInfo = { cardNumber, gameId, connected, stake };
         console.log('selectCard called with:', debugInfo);
@@ -300,10 +305,13 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
                     <h1 className="text-center text-3xl md:text-4xl font-extrabold leading-tight mt-6 text-white">
                         Welcome to Love Bingo
                     </h1>
-                    <div className="text-center text-white mt-4">
-                        <p>Debug: Component is rendering</p>
+                    <div className="text-center text-white mt-4 bg-red-500 p-4 rounded-lg">
+                        <p><strong>TEST: Component is rendering!</strong></p>
                         <p>Stake: {stake || 'null'}</p>
                         <p>Phase: {phase}</p>
+                        <p>SessionId: {sessionId ? 'present' : 'missing'}</p>
+                        <p>User: {user ? 'present' : 'missing'}</p>
+                        <p>Loading: {isLoading ? 'true' : 'false'}</p>
                     </div>
                 </header>
 

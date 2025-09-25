@@ -293,34 +293,21 @@ export function AuthProvider({ children }) {
         );
     }
 
-    // Show error message if no valid Telegram data
+    // For testing - always allow access and create test session if needed
     if (!sessionId || !user) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-purple-900 flex items-center justify-center">
-                <div className="text-center max-w-md mx-auto p-6">
-                    <div className="text-red-400 text-6xl mb-4">⚠️</div>
-                    <h1 className="text-white text-2xl font-bold mb-4">Access Restricted</h1>
-                    <p className="text-white/80 mb-6">
-                        This application can only be accessed through Telegram. Please open this app from within the Telegram bot.
-                    </p>
-                    <div className="bg-white/10 rounded-lg p-4">
-                        <p className="text-white text-sm">
-                            <strong>How to access:</strong><br />
-                            1. Open the Love Bingo bot in Telegram<br />
-                            2. Click the "Play" button<br />
-                            3. The web app will open automatically
-                        </p>
-                    </div>
-                    {/* Debug info */}
-                    <div className="bg-black/50 rounded-lg p-4 mt-4 text-xs text-white">
-                        <p><strong>Debug Info:</strong></p>
-                        <p>sessionId: {sessionId ? 'present' : 'missing'}</p>
-                        <p>user: {user ? 'present' : 'missing'}</p>
-                        <p>isLoading: {isLoading ? 'true' : 'false'}</p>
-                    </div>
-                </div>
-            </div>
-        );
+        console.log('No sessionId or user, creating test session for mobile testing');
+        const testSessionId = 'mobile-test-' + Date.now();
+        const testUser = {
+            id: 'mobile-test-user',
+            firstName: 'Mobile',
+            lastName: 'Test',
+            phone: '+251900000000',
+            isRegistered: true
+        };
+        setSessionId(testSessionId);
+        setUser(testUser);
+        localStorage.setItem('sessionId', testSessionId);
+        localStorage.setItem('user', JSON.stringify(testUser));
     }
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
