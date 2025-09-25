@@ -138,9 +138,14 @@ export function AuthProvider({ children }) {
                 });
 
                 // No hash bypasses - require proper Telegram WebApp initData
-
                 // No test sessions - require real Telegram authentication
                 console.log('No Telegram initData found - authentication required');
+                setSessionId(null);
+                setUser(null);
+                localStorage.removeItem('sessionId');
+                localStorage.removeItem('user');
+                setIsLoading(false);
+                return;
             }
 
             try {
@@ -177,6 +182,7 @@ export function AuthProvider({ children }) {
 
     // Show loading state while authenticating
     if (isLoading) {
+        console.log('AuthProvider: Showing loading screen');
         return (
             <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-purple-900 flex items-center justify-center">
                 <div className="text-center">
@@ -208,6 +214,7 @@ export function AuthProvider({ children }) {
 
     // Show error message if no valid Telegram data
     if (!sessionId || !user) {
+        console.log('AuthProvider: Showing access restricted screen');
         return (
             <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-purple-900 flex items-center justify-center">
                 <div className="text-center max-w-md mx-auto p-6">
@@ -238,6 +245,7 @@ export function AuthProvider({ children }) {
         );
     }
 
+    console.log('AuthProvider: Rendering children (authenticated)');
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
