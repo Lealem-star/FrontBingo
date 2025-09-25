@@ -22,6 +22,7 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
     const [showWinners, setShowWinners] = useState(false);
     const [currentCalledNumber, setCurrentCalledNumber] = useState(null);
     const [playersCount, setPlayersCount] = useState(0);
+    const [prizePool, setPrizePool] = useState(0);
     const [profile, setProfile] = useState(null);
     const [wallet, setWallet] = useState({ balance: 0, coins: 0, gamesWon: 0 });
     const [adminPost, setAdminPost] = useState(null);
@@ -57,6 +58,7 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
                     setAvailableCards(evt.payload.availableCards || []);
                     setEndsAt(evt.payload.endsAt);
                     setPlayersCount(Number(evt.payload.playersCount || 0));
+                    setPrizePool(Number(evt.payload.prizePool || 0));
                     // If user selected a cartella before a gameId existed, auto-send now
                     if (pendingSelectedCardNumber) {
                         try { send('select_card', { gameId: evt.payload.gameId, cardNumber: pendingSelectedCardNumber }); } catch (_) { }
@@ -65,6 +67,9 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
                 case 'registration_update':
                     if (typeof evt.payload.timeLeft === 'number') {
                         setEndsAt(Date.now() + evt.payload.timeLeft * 1000);
+                    }
+                    if (typeof evt.payload.prizePool === 'number') {
+                        setPrizePool(evt.payload.prizePool);
                     }
                     break;
                 case 'registration_closed':
@@ -78,6 +83,7 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
                     setMyCard(evt.payload.card ? { id: pendingSelectedCardNumber, data: evt.payload.card } : null);
                     setCalled(evt.payload.called || evt.payload.calledNumbers || []);
                     setPlayersCount(Number(evt.payload.playersCount || playersCount));
+                    setPrizePool(Number(evt.payload.prizePool || prizePool));
                     setEndsAt(null);
                     break;
                 case 'number_called': {
@@ -128,6 +134,9 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
                     break;
                 case 'players_update':
                     setPlayersCount(Number(evt.payload.playersCount || 0));
+                    if (typeof evt.payload.prizePool === 'number') {
+                        setPrizePool(evt.payload.prizePool);
+                    }
                     break;
                 case 'selection_confirmed': {
                     // Optimistically update players count if server doesn't push players_update immediately
@@ -136,6 +145,10 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
                         setPlayersCount(serverCount);
                     } else {
                         setPlayersCount(prev => (prev > 0 ? prev + 1 : 1));
+                    }
+                    // Update prize pool if provided
+                    if (typeof evt.payload?.prizePool === 'number') {
+                        setPrizePool(evt.payload.prizePool);
                     }
                     // Ensure player is not forced into watching-only if they selected a card and have balance
                     const confirmedCard = evt.payload?.cardNumber || pendingSelectedCardNumber;
@@ -323,6 +336,7 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
                 currentCalledNumber={currentCalledNumber}
                 onRefresh={() => window.location.reload()}
                 playersCount={playersCount}
+                prizePool={prizePool}
                 walletBalance={Number(wallet?.balance || 0)}
                 isWatchingOnly={!hasSelectedCartelaId && !selectionConfirmed}
                 gamePhase={phase === 'running' ? 'playing' : (phase === 'announce' ? 'finished' : 'waiting')}
@@ -341,6 +355,7 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
                     <div><strong>gameId:</strong> {String(gameId)}</div>
                     <div><strong>players:</strong> {playersCount}</div>
                     <div><strong>stake:</strong> {String(stake)}</div>
+                    <div><strong>prizePool:</strong> {String(prizePool)}</div>
                     <div><strong>wallet.balance:</strong> {String(wallet?.balance)}</div>
                     <div><strong>selectedCartela:</strong> {String(myCard?.id || selectedCartela || '')}</div>
                     <div><strong>selectionConfirmed:</strong> {String(selectionConfirmed)}</div>

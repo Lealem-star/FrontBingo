@@ -11,6 +11,7 @@ export default function GameLayout({
     onLeave,
     onRefresh,
     playersCount = 0,
+    prizePool = 0,
     gameId,
     walletBalance = 0,
     gamePhase = 'waiting', // 'waiting', 'playing', 'finished'
@@ -29,9 +30,9 @@ export default function GameLayout({
     const generateGameId = () => `LB${Math.floor(100000 + Math.random() * 900000)}`;
     const gameIdRef = useRef(gameId || generateGameId());
 
-    // Derash = 80% of (playersCount * stake)
+    // Use prize pool from props, fallback to calculated value
     const numericStake = Number(stake || 0);
-    const derashAmount = Math.floor(playersCount * numericStake * 0.8);
+    const derashAmount = Number(prizePool || Math.floor(playersCount * numericStake * 0.8));
 
     // Check if user has sufficient wallet balance
     const numericWalletBalance = Number(walletBalance || 0);
