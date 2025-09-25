@@ -30,7 +30,7 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
     const [lastWsEvent, setLastWsEvent] = useState(null);
     const [selectionConfirmed, setSelectionConfirmed] = useState(false);
     const [requestedRegistration, setRequestedRegistration] = useState(false);
-    const [debugMessages, setDebugMessages] = useState([]);
+    const [debugMessages, setDebugMessages] = useState(['App started']);
 
     // Update stake when selectedStake prop changes
     useEffect(() => {
@@ -279,7 +279,7 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
     // Show debug panel even when no stake is selected
     if (!stake) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-purple-900">
+            <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-purple-900" style={{ position: 'relative' }}>
                 <header className="p-4">
                     <div className="app-header">
                         <div className="app-logo">
@@ -296,6 +296,11 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
                     <h1 className="text-center text-3xl md:text-4xl font-extrabold leading-tight mt-6 text-white">
                         Welcome to Love Bingo
                     </h1>
+                    <div className="text-center text-white mt-4">
+                        <p>Debug: Component is rendering</p>
+                        <p>Stake: {stake || 'null'}</p>
+                        <p>Phase: {phase}</p>
+                    </div>
                 </header>
 
                 <main className="p-4 space-y-4">
@@ -349,33 +354,62 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
 
                 <BottomNav current="game" onNavigate={onNavigate} />
 
-                {/* Debug Panel for initial screen */}
-                {debugOpen && (
-                    <div style={{ position: 'fixed', top: 70, right: 10, left: 10, zIndex: 9999 }} className="bg-black/90 text-white p-3 rounded-xl text-xs max-h-80 overflow-auto">
-                        <div className="flex justify-between items-center mb-2">
-                            <strong>Debug Panel</strong>
-                            <button onClick={() => setDebugOpen(false)} className="text-red-400">✕</button>
-                        </div>
+                {/* Debug Panel for initial screen - Always visible */}
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    zIndex: 9999,
+                    backgroundColor: 'rgba(0,0,0,0.95)',
+                    color: 'white',
+                    padding: '10px',
+                    fontSize: '12px',
+                    overflow: 'auto'
+                }}>
+                    <div className="flex justify-between items-center mb-2">
+                        <strong style={{ fontSize: '16px' }}>🐞 Debug Panel</strong>
+                        <button
+                            onClick={() => setDebugOpen(false)}
+                            style={{
+                                backgroundColor: 'red',
+                                color: 'white',
+                                border: 'none',
+                                padding: '5px 10px',
+                                borderRadius: '5px'
+                            }}
+                        >
+                            Close
+                        </button>
+                    </div>
 
-                        <div className="grid grid-cols-2 gap-1 mb-2">
-                            <div><strong>phase:</strong> {phase}</div>
-                            <div><strong>connected:</strong> {String(connected)}</div>
-                            <div><strong>gameId:</strong> {String(gameId || 'null')}</div>
-                            <div><strong>stake:</strong> {String(stake || 'null')}</div>
-                            <div><strong>sessionId:</strong> {String(sessionId ? 'present' : 'missing')}</div>
-                            <div><strong>wsUrl:</strong> {String(wsUrl || 'null')}</div>
-                        </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px', marginBottom: '10px' }}>
+                        <div><strong>phase:</strong> {phase}</div>
+                        <div><strong>connected:</strong> {String(connected)}</div>
+                        <div><strong>gameId:</strong> {String(gameId || 'null')}</div>
+                        <div><strong>stake:</strong> {String(stake || 'null')}</div>
+                        <div><strong>sessionId:</strong> {String(sessionId ? 'present' : 'missing')}</div>
+                        <div><strong>wsUrl:</strong> {String(wsUrl || 'null')}</div>
+                    </div>
 
-                        <div className="mt-2">
-                            <strong>Recent Events:</strong>
-                            <div className="bg-gray-800 p-2 rounded mt-1 max-h-32 overflow-auto text-xs">
-                                {debugMessages.map((msg, i) => (
-                                    <div key={i} className="text-green-300">{msg}</div>
-                                ))}
-                            </div>
+                    <div style={{ marginTop: '10px' }}>
+                        <strong>Recent Events:</strong>
+                        <div style={{
+                            backgroundColor: '#333',
+                            padding: '10px',
+                            borderRadius: '5px',
+                            marginTop: '5px',
+                            maxHeight: '200px',
+                            overflow: 'auto',
+                            fontSize: '10px'
+                        }}>
+                            {debugMessages.map((msg, i) => (
+                                <div key={i} style={{ color: '#90EE90', marginBottom: '2px' }}>{msg}</div>
+                            ))}
                         </div>
                     </div>
-                )}
+                </div>
             </div>
         );
     }
