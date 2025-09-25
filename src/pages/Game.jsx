@@ -279,7 +279,7 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
         onNavigate?.('game');
     };
 
-    // Show debug panel even when no stake is selected
+    // Show initial screen when no stake is selected
     if (!stake) {
         console.log('Rendering initial screen - no stake selected');
         return (
@@ -358,62 +358,63 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
 
                 <BottomNav current="game" onNavigate={onNavigate} />
 
-                {/* Debug Panel for initial screen - Always visible */}
-                <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    zIndex: 9999,
-                    backgroundColor: 'rgba(0,0,0,0.95)',
-                    color: 'white',
-                    padding: '10px',
-                    fontSize: '12px',
-                    overflow: 'auto'
-                }}>
-                    <div className="flex justify-between items-center mb-2">
-                        <strong style={{ fontSize: '16px' }}>🐞 Debug Panel</strong>
-                        <button
-                            onClick={() => setDebugOpen(false)}
-                            style={{
-                                backgroundColor: 'red',
-                                color: 'white',
-                                border: 'none',
-                                padding: '5px 10px',
-                                borderRadius: '5px'
-                            }}
-                        >
-                            Close
-                        </button>
-                    </div>
+                {/* Debug Panel for initial screen */}
+                {debugOpen && (
+                    <div style={{
+                        position: 'fixed',
+                        top: 10,
+                        left: 10,
+                        right: 10,
+                        zIndex: 9999,
+                        backgroundColor: 'rgba(0,0,0,0.9)',
+                        color: 'white',
+                        padding: '10px',
+                        fontSize: '12px',
+                        borderRadius: '10px',
+                        maxHeight: '300px',
+                        overflow: 'auto'
+                    }}>
+                        <div className="flex justify-between items-center mb-2">
+                            <strong style={{ fontSize: '14px' }}>🐞 Debug</strong>
+                            <button
+                                onClick={() => setDebugOpen(false)}
+                                style={{
+                                    backgroundColor: 'red',
+                                    color: 'white',
+                                    border: 'none',
+                                    padding: '3px 8px',
+                                    borderRadius: '3px',
+                                    fontSize: '10px'
+                                }}
+                            >
+                                ✕
+                            </button>
+                        </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px', marginBottom: '10px' }}>
-                        <div><strong>phase:</strong> {phase}</div>
-                        <div><strong>connected:</strong> {String(connected)}</div>
-                        <div><strong>gameId:</strong> {String(gameId || 'null')}</div>
-                        <div><strong>stake:</strong> {String(stake || 'null')}</div>
-                        <div><strong>sessionId:</strong> {String(sessionId ? 'present' : 'missing')}</div>
-                        <div><strong>wsUrl:</strong> {String(wsUrl || 'null')}</div>
-                    </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px', marginBottom: '8px', fontSize: '10px' }}>
+                            <div><strong>phase:</strong> {phase}</div>
+                            <div><strong>connected:</strong> {String(connected)}</div>
+                            <div><strong>sessionId:</strong> {String(sessionId ? 'present' : 'missing')}</div>
+                            <div><strong>stake:</strong> {String(stake || 'null')}</div>
+                        </div>
 
-                    <div style={{ marginTop: '10px' }}>
-                        <strong>Recent Events:</strong>
-                        <div style={{
-                            backgroundColor: '#333',
-                            padding: '10px',
-                            borderRadius: '5px',
-                            marginTop: '5px',
-                            maxHeight: '200px',
-                            overflow: 'auto',
-                            fontSize: '10px'
-                        }}>
-                            {debugMessages.map((msg, i) => (
-                                <div key={i} style={{ color: '#90EE90', marginBottom: '2px' }}>{msg}</div>
-                            ))}
+                        <div style={{ marginTop: '8px', fontSize: '10px' }}>
+                            <strong>Events:</strong>
+                            <div style={{
+                                backgroundColor: '#333',
+                                padding: '5px',
+                                borderRadius: '3px',
+                                marginTop: '3px',
+                                maxHeight: '100px',
+                                overflow: 'auto'
+                            }}>
+                                {debugMessages.slice(-5).map((msg, i) => (
+                                    <div key={i} style={{ color: '#90EE90', marginBottom: '1px' }}>{msg}</div>
+                                ))}
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
             </div>
         );
     }
