@@ -26,10 +26,11 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
     const [profile, setProfile] = useState(null);
     const [wallet, setWallet] = useState({ balance: 0, coins: 0, gamesWon: 0 });
     const [adminPost, setAdminPost] = useState(null);
-    const [debugOpen, setDebugOpen] = useState(false);
+    const [debugOpen, setDebugOpen] = useState(true); // Show by default on mobile
     const [lastWsEvent, setLastWsEvent] = useState(null);
     const [selectionConfirmed, setSelectionConfirmed] = useState(false);
     const [requestedRegistration, setRequestedRegistration] = useState(false);
+    const [debugMessages, setDebugMessages] = useState([]);
 
     // Update stake when selectedStake prop changes
     useEffect(() => {
@@ -37,6 +38,11 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
             setStake(selectedStake);
         }
     }, [selectedStake, stake]);
+
+    // Add connection status to debug messages
+    useEffect(() => {
+        addDebugMessage(`WebSocket ${connected ? 'connected' : 'disconnected'}`);
+    }, [connected]);
 
     const wsUrl = useMemo(() => {
         const base = import.meta.env.VITE_WS_URL || 'ws://localhost:3001/ws';
@@ -46,7 +52,10 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
     const { connected, send } = useGameSocket(wsUrl, {
         token: sessionId,
         onEvent: (evt) => {
-            try { setLastWsEvent(evt); } catch (_) { }
+            try {
+                setLastWsEvent(evt);
+                addDebugMessage(`Received: ${evt.type}`);
+            } catch (_) { }
             switch (evt.type) {
                 case 'lobby_info':
                     setPhase(evt.payload.phase);
@@ -171,12 +180,20 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
         // send('join_lobby', { stake: s });
     };
 
+    const addDebugMessage = (message) => {
+        const timestamp = new Date().toLocaleTimeString();
+        setDebugMessages(prev => [...prev.slice(-9), `${timestamp}: ${message}`]);
+    };
+
     const selectCard = (cardNumber) => {
+        const debugInfo = { cardNumber, gameId, connected, stake };
+        console.log('selectCard called with:', debugInfo);
+        addDebugMessage(`selectCard: ${JSON.stringify(debugInfo)}`);
+
         setPendingSelectedCardNumber(cardNumber);
-        // If we already have a gameId, send immediately; otherwise queue
-        if (gameId) {
-            send('select_card', { gameId, cardNumber });
-        }
+        // Always send card selection - this will trigger registration if needed
+        send('select_card', { gameId: gameId || null, cardNumber });
+        addDebugMessage(`Sent: select_card ${cardNumber}`);
         // Optimistically reflect selection in UI
         if (!myCard) setMyCard({ id: cardNumber });
     };
@@ -350,18 +367,35 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
                 aria-label="Toggle debug"
             >🐞</button>
             {debugOpen && (
-                <div style={{ position: 'fixed', top: 70, right: 20, left: 20, zIndex: 9999 }} className="bg-black/80 text-white p-3 rounded-xl text-xs max-h-60 overflow-auto">
-                    <div><strong>phase:</strong> {phase}</div>
-                    <div><strong>gameId:</strong> {String(gameId)}</div>
-                    <div><strong>players:</strong> {playersCount}</div>
-                    <div><strong>stake:</strong> {String(stake)}</div>
-                    <div><strong>prizePool:</strong> {String(prizePool)}</div>
-                    <div><strong>wallet.balance:</strong> {String(wallet?.balance)}</div>
-                    <div><strong>selectedCartela:</strong> {String(myCard?.id || selectedCartela || '')}</div>
-                    <div><strong>selectionConfirmed:</strong> {String(selectionConfirmed)}</div>
-                    <div><strong>isWatchingOnly:</strong> {String(!myCard && !selectionConfirmed)}</div>
-                    <div className="mt-2"><strong>last WS event:</strong> {lastWsEvent?.type || '(none)'}</div>
-                    <pre className="whitespace-pre-wrap break-words">{lastWsEvent ? JSON.stringify(lastWsEvent, null, 2) : ''}</pre>
+                <div style={{ position: 'fixed', top: 70, right: 10, left: 10, zIndex: 9999 }} className="bg-black/90 text-white p-3 rounded-xl text-xs max-h-80 overflow-auto">
+                    <div className="flex justify-between items-center mb-2">
+                        <strong>Debug Panel</strong>
+                        <button onClick={() => setDebugOpen(false)} className="text-red-400">✕</button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-1 mb-2">
+                        <div><strong>phase:</strong> {phase}</div>
+                        <div><strong>connected:</strong> {String(connected)}</div>
+                        <div><strong>gameId:</strong> {String(gameId || 'null')}</div>
+                        <div><strong>players:</strong> {playersCount}</div>
+                        <div><strong>stake:</strong> {String(stake)}</div>
+                        <div><strong>prizePool:</strong> {String(prizePool)}</div>
+                        <div><strong>selectedCartela:</strong> {String(myCard?.id || selectedCartela || '')}</div>
+                        <div><strong>confirmed:</strong> {String(selectionConfirmed)}</div>
+                    </div>
+
+                    <div className="mt-2">
+                        <strong>Recent Events:</strong>
+                        <div className="bg-gray-800 p-2 rounded mt-1 max-h-32 overflow-auto text-xs">
+                            {debugMessages.map((msg, i) => (
+                                <div key={i} className="text-green-300">{msg}</div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="mt-2">
+                        <strong>Last Event:</strong> {lastWsEvent?.type || '(none)'}
+                    </div>
                 </div>
             )}
             <WinnerAnnounce open={showWinners} onClose={() => setShowWinners(false)} winners={winners} />

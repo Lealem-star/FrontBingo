@@ -7,10 +7,15 @@ export function useGameSocket(url, { onEvent, token } = {}) {
 
     const send = useCallback((type, payload) => {
         const ws = wsRef.current;
+        console.log('WebSocket send attempt:', { type, payload, connected, readyState: ws?.readyState });
         if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type, payload }));
+            const message = JSON.stringify({ type, payload });
+            console.log('Sending WebSocket message:', message);
+            ws.send(message);
+        } else {
+            console.warn('WebSocket not ready:', { connected, readyState: ws?.readyState });
         }
-    }, []);
+    }, [connected]);
 
     useEffect(() => {
         if (!url || !token) return;
