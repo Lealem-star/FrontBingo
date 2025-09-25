@@ -74,9 +74,9 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
                 case 'game_started':
                     setPhase('running');
                     setGameId(evt.payload.gameId);
-                    // Prefer server card; fallback to pending selection if server is delayed
-                    setMyCard(evt.payload.card || (pendingSelectedCardNumber ? { id: pendingSelectedCardNumber } : null));
-                    setCalled(evt.payload.called || []);
+                    // Use server-provided card data for consistent gameplay
+                    setMyCard(evt.payload.card ? { id: pendingSelectedCardNumber, data: evt.payload.card } : null);
+                    setCalled(evt.payload.called || evt.payload.calledNumbers || []);
                     setPlayersCount(Number(evt.payload.playersCount || playersCount));
                     setEndsAt(null);
                     break;
@@ -111,11 +111,15 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
                 case 'snapshot':
                     setPhase(evt.payload.phase);
                     setGameId(evt.payload.gameId || null);
-                    // Keep existing or pending card if snapshot lacks it
-                    setMyCard(evt.payload.card || myCard || (pendingSelectedCardNumber ? { id: pendingSelectedCardNumber } : null));
+                    // Use server card data if available, otherwise keep existing
+                    if (evt.payload.card) {
+                        setMyCard({ id: pendingSelectedCardNumber, data: evt.payload.card });
+                    } else if (!myCard && pendingSelectedCardNumber) {
+                        setMyCard({ id: pendingSelectedCardNumber });
+                    }
                     setCalled(evt.payload.called || evt.payload.calledNumbers || []);
                     setAvailableCards(evt.payload.availableCards || []);
-                    setEndsAt(evt.payload.endsAt || evt.payload.nextStartAt || null);
+                    setEndsAt(evt.payload.nextStartAt || evt.payload.endsAt || null);
                     setPlayersCount(Number(evt.payload.playersCount || playersCount));
                     // If room is idle (waiting), proactively request registration to start
                     if (stake && evt.payload.phase === 'waiting' && !requestedRegistration) {

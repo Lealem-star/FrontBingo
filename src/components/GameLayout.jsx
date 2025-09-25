@@ -104,9 +104,17 @@ export default function GameLayout({
 
     // Find a winning pattern indices if present; otherwise null
     const findWinningPattern = () => {
-        if (!selectedCartela || !BingoCards?.cards?.[selectedCartela - 1]) return null;
+        if (!selectedCartela) return null;
 
-        const cartellaNumbers = BingoCards.cards[selectedCartela - 1];
+        // Use server-provided card data if available, otherwise fall back to predefined cards
+        let cartellaNumbers;
+        if (selectedCartela.data && Array.isArray(selectedCartela.data)) {
+            cartellaNumbers = selectedCartela.data;
+        } else if (BingoCards?.cards?.[selectedCartela - 1]) {
+            cartellaNumbers = BingoCards.cards[selectedCartela - 1];
+        } else {
+            return null;
+        }
 
         const patterns = [
             [0, 1, 2, 3, 4],
@@ -396,7 +404,7 @@ export default function GameLayout({
                                                     );
                                                 }
 
-                                                // Use selected cartella data if available
+                                                // Use server-provided card data if available, otherwise fall back to predefined cards
                                                 let displayNumbers = [
                                                     [3, 17, 43, 54, 63],
                                                     [15, 20, 32, 58, 61],
@@ -405,8 +413,12 @@ export default function GameLayout({
                                                     [2, 23, 45, 59, 64]
                                                 ];
 
-                                                if (selectedCartela && BingoCards?.cards?.[selectedCartela - 1]) {
-                                                    displayNumbers = BingoCards.cards[selectedCartela - 1];
+                                                if (selectedCartela) {
+                                                    if (selectedCartela.data && Array.isArray(selectedCartela.data)) {
+                                                        displayNumbers = selectedCartela.data;
+                                                    } else if (BingoCards?.cards?.[selectedCartela - 1]) {
+                                                        displayNumbers = BingoCards.cards[selectedCartela - 1];
+                                                    }
                                                 }
 
                                                 const number = displayNumbers[row]?.[col] || 0;
