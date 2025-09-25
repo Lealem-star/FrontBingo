@@ -212,10 +212,20 @@ export function AuthProvider({ children }) {
                     return;
                 }
 
-                setSessionId(null);
-                setUser(null);
-                localStorage.removeItem('sessionId');
-                localStorage.removeItem('user');
+                // For mobile testing, create a test session if no Telegram data
+                console.log('No Telegram data, creating test session for mobile testing');
+                const testSessionId = 'mobile-test-' + Date.now();
+                const testUser = {
+                    id: 'mobile-test-user',
+                    firstName: 'Mobile',
+                    lastName: 'Test',
+                    phone: '+251900000000',
+                    isRegistered: true
+                };
+                setSessionId(testSessionId);
+                setUser(testUser);
+                localStorage.setItem('sessionId', testSessionId);
+                localStorage.setItem('user', JSON.stringify(testUser));
                 setIsLoading(false);
                 return;
             }
@@ -248,6 +258,9 @@ export function AuthProvider({ children }) {
     }, []); // Remove sessionId and user dependencies to prevent infinite loops
 
     const value = useMemo(() => ({ sessionId, user, setSessionId, isLoading }), [sessionId, user, isLoading]);
+
+    // Debug logging
+    console.log('AuthProvider render:', { sessionId: !!sessionId, user: !!user, isLoading });
 
     // Show loading state while authenticating
     if (isLoading) {
@@ -297,6 +310,13 @@ export function AuthProvider({ children }) {
                             2. Click the "Play" button<br />
                             3. The web app will open automatically
                         </p>
+                    </div>
+                    {/* Debug info */}
+                    <div className="bg-black/50 rounded-lg p-4 mt-4 text-xs text-white">
+                        <p><strong>Debug Info:</strong></p>
+                        <p>sessionId: {sessionId ? 'present' : 'missing'}</p>
+                        <p>user: {user ? 'present' : 'missing'}</p>
+                        <p>isLoading: {isLoading ? 'true' : 'false'}</p>
                     </div>
                 </div>
             </div>

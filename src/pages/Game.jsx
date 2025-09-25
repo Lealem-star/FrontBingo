@@ -9,7 +9,10 @@ import lbLogo from '../assets/lb.png';
 import { apiFetch } from '../lib/api/client';
 
 export default function Game({ onNavigate, onStakeSelected, selectedCartela, selectedStake }) {
-    const { sessionId } = useAuth();
+    const { sessionId, user, isLoading } = useAuth();
+
+    // Debug logging
+    console.log('Game component render:', { sessionId: !!sessionId, user: !!user, isLoading, selectedStake });
     const [stake, setStake] = useState(selectedStake);
     const [phase, setPhase] = useState('lobby');
     const [gameId, setGameId] = useState(null);
@@ -278,6 +281,7 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
 
     // Show debug panel even when no stake is selected
     if (!stake) {
+        console.log('Rendering initial screen - no stake selected');
         return (
             <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-purple-900" style={{ position: 'relative' }}>
                 <header className="p-4">
