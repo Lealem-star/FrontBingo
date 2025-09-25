@@ -29,6 +29,7 @@ export function useGameSocket(url, { onEvent, token } = {}) {
             wsRef.current = ws;
 
             ws.onopen = () => {
+                console.log('WebSocket connected');
                 setConnected(true);
                 retry = 0;
             };
@@ -40,15 +41,20 @@ export function useGameSocket(url, { onEvent, token } = {}) {
                     onEvent && onEvent(evt);
                 } catch { }
             };
-            ws.onclose = () => {
+            ws.onclose = (event) => {
+                console.log('WebSocket closed:', event.code, event.reason);
                 setConnected(false);
                 if (!stopped) {
                     const delay = Math.min(1000 * 2 ** retry, 10000);
                     retry += 1;
+                    console.log(`Retrying connection in ${delay}ms (attempt ${retry})`);
                     setTimeout(connect, delay);
                 }
             };
-            ws.onerror = () => ws.close();
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                ws.close();
+            };
         };
 
         connect();

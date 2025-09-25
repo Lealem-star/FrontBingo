@@ -44,13 +44,23 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
         addDebugMessage(`WebSocket ${connected ? 'connected' : 'disconnected'}`);
     }, [connected]);
 
+    // Add authentication status to debug messages
+    useEffect(() => {
+        addDebugMessage(`Auth: sessionId ${sessionId ? 'present' : 'missing'}`);
+    }, [sessionId]);
+
     const wsUrl = useMemo(() => {
-        const base = import.meta.env.VITE_WS_URL || 'ws://localhost:3001/ws';
+        // Use environment variable or try to detect the correct URL
+        const base = import.meta.env.VITE_WS_URL ||
+            (window.location.hostname === 'localhost' ? 'ws://localhost:3001/ws' :
+                `ws://${window.location.hostname}:3001/ws`);
+        console.log('WebSocket URL:', base);
+        addDebugMessage(`WebSocket URL: ${base}`);
         return stake ? `${base}?stake=${stake}` : null;
     }, [stake]);
 
     const { connected, send } = useGameSocket(wsUrl, {
-        token: sessionId,
+        token: sessionId || 'test-token', // Fallback token for testing
         onEvent: (evt) => {
             try {
                 setLastWsEvent(evt);
@@ -261,7 +271,7 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
         onNavigate?.('game');
     };
 
-    // If no stake selected, show the initial screen
+    // Show debug panel even when no stake is selected
     if (!stake) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-purple-900">
@@ -333,6 +343,34 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
                 </main>
 
                 <BottomNav current="game" onNavigate={onNavigate} />
+
+                {/* Debug Panel for initial screen */}
+                {debugOpen && (
+                    <div style={{ position: 'fixed', top: 70, right: 10, left: 10, zIndex: 9999 }} className="bg-black/90 text-white p-3 rounded-xl text-xs max-h-80 overflow-auto">
+                        <div className="flex justify-between items-center mb-2">
+                            <strong>Debug Panel</strong>
+                            <button onClick={() => setDebugOpen(false)} className="text-red-400">✕</button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-1 mb-2">
+                            <div><strong>phase:</strong> {phase}</div>
+                            <div><strong>connected:</strong> {String(connected)}</div>
+                            <div><strong>gameId:</strong> {String(gameId || 'null')}</div>
+                            <div><strong>stake:</strong> {String(stake || 'null')}</div>
+                            <div><strong>sessionId:</strong> {String(sessionId ? 'present' : 'missing')}</div>
+                            <div><strong>wsUrl:</strong> {String(wsUrl || 'null')}</div>
+                        </div>
+
+                        <div className="mt-2">
+                            <strong>Recent Events:</strong>
+                            <div className="bg-gray-800 p-2 rounded mt-1 max-h-32 overflow-auto text-xs">
+                                {debugMessages.map((msg, i) => (
+                                    <div key={i} className="text-green-300">{msg}</div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         );
     }
