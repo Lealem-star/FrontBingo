@@ -49,11 +49,16 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
         addDebugMessage(`Auth: sessionId ${sessionId ? 'present' : 'missing'}`);
     }, [sessionId]);
 
+    // Add URL debugging
+    useEffect(() => {
+        addDebugMessage(`API URL: ${import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : 'https://bingo-back-2evw.onrender.com')}`);
+    }, []);
+
     const wsUrl = useMemo(() => {
         // Use environment variable or try to detect the correct URL
         const base = import.meta.env.VITE_WS_URL ||
             (window.location.hostname === 'localhost' ? 'ws://localhost:3001/ws' :
-                `ws://${window.location.hostname}:3001/ws`);
+                'wss://bingo-back-2evw.onrender.com/ws');
         console.log('WebSocket URL:', base);
         addDebugMessage(`WebSocket URL: ${base}`);
         return stake ? `${base}?stake=${stake}` : null;

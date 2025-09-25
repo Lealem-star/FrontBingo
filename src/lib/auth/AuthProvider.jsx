@@ -4,7 +4,9 @@ import { apiFetch } from '../api/client';
 const AuthContext = createContext({ sessionId: null, user: null, setSessionId: () => { } });
 
 async function verifyTelegram(initData) {
-    const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    const apiBase = import.meta.env.VITE_API_URL ||
+        (window.location.hostname === 'localhost' ? 'http://localhost:3001' :
+            'https://bingo-back-2evw.onrender.com');
     const res = await fetch(`${apiBase}/auth/telegram/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
