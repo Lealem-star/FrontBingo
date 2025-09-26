@@ -304,10 +304,6 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
         console.log('Rendering initial screen - no stake selected');
         return (
             <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-purple-900" style={{ position: 'relative' }}>
-                {/* Test element to see if component renders */}
-                <div className="fixed top-0 left-0 right-0 bg-yellow-500 text-black p-2 text-center z-50">
-                    TEST: Game component is rendering! Auth: {sessionId ? 'OK' : 'FAIL'} | User: {user ? 'OK' : 'FAIL'}
-                </div>
                 <header className="p-4">
                     <div className="app-header">
                         <div className="app-logo">
