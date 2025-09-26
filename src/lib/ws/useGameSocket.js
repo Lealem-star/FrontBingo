@@ -23,6 +23,7 @@ export function useGameSocket(url, { onEvent, token } = {}) {
         if (!url || !token) return;
         let stopped = false;
         let retry = 0;
+        let heartbeat = null;
 
         const connect = () => {
             const wsUrl = new URL(url);
@@ -54,6 +55,7 @@ export function useGameSocket(url, { onEvent, token } = {}) {
             ws.onclose = (event) => {
                 console.log('WebSocket closed:', event.code, event.reason);
                 setConnected(false);
+                if (heartbeat) { clearInterval(heartbeat); heartbeat = null; }
                 if (!stopped) {
                     const delay = Math.min(1000 * 2 ** retry, 10000);
                     retry += 1;
@@ -65,12 +67,22 @@ export function useGameSocket(url, { onEvent, token } = {}) {
                 console.error('WebSocket error:', error);
                 ws.close();
             };
+
+            // Start heartbeat keepalive every 20s
+            heartbeat = setInterval(() => {
+                try {
+                    if (ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ type: 'ping', payload: { ts: Date.now() } }));
+                    }
+                } catch (_) { }
+            }, 20000);
         };
 
         connect();
         return () => {
             stopped = true;
             wsRef.current?.close();
+            if (heartbeat) { clearInterval(heartbeat); heartbeat = null; }
         };
     }, [url, token, onEvent]);
 
