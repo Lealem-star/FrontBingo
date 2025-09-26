@@ -5,6 +5,12 @@ export function useGameSocket(url, { onEvent, token } = {}) {
     const [connected, setConnected] = useState(false);
     const [lastEvent, setLastEvent] = useState(null);
     const pendingRef = useRef([]); // queue messages while socket not open
+    const onEventRef = useRef(onEvent);
+
+    // Keep latest onEvent without re-creating the socket
+    useEffect(() => {
+        onEventRef.current = onEvent;
+    }, [onEvent]);
 
     const send = useCallback((type, payload) => {
         const ws = wsRef.current;
@@ -49,7 +55,8 @@ export function useGameSocket(url, { onEvent, token } = {}) {
                     const evt = JSON.parse(e.data);
                     try { console.debug('[WS] event:', evt.type, evt.payload); } catch { }
                     setLastEvent(evt);
-                    onEvent && onEvent(evt);
+                    const handler = onEventRef.current;
+                    if (handler) handler(evt);
                 } catch { }
             };
             ws.onclose = (event) => {
@@ -84,7 +91,7 @@ export function useGameSocket(url, { onEvent, token } = {}) {
             wsRef.current?.close();
             if (heartbeat) { clearInterval(heartbeat); heartbeat = null; }
         };
-    }, [url, token, onEvent]);
+    }, [url, token]);
 
     return { connected, lastEvent, send };
 }
