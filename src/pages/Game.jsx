@@ -44,17 +44,18 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
     const [requestedRegistration, setRequestedRegistration] = useState(false);
     const [debugMessages, setDebugMessages] = useState(['App started']);
 
+    // Define debug logger before any usage
+    const addDebugMessage = (message) => {
+        const timestamp = new Date().toLocaleTimeString();
+        setDebugMessages(prev => [...prev.slice(-9), `${timestamp}: ${message}`]);
+    };
+
     // Update stake when selectedStake prop changes
     useEffect(() => {
         if (selectedStake && selectedStake !== stake) {
             setStake(selectedStake);
         }
     }, [selectedStake, stake]);
-
-    // Add connection status to debug messages
-    useEffect(() => {
-        addDebugMessage(`WebSocket ${connected ? 'connected' : 'disconnected'}`);
-    }, [connected]);
 
     // Add authentication status to debug messages
     useEffect(() => {
@@ -72,10 +73,15 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
             (window.location.hostname === 'localhost' ? 'ws://localhost:3001/ws' :
                 'wss://bingo-back-2evw.onrender.com/ws');
         console.log('WebSocket URL:', base);
-        addDebugMessage(`WebSocket URL: ${base}`);
         return stake ? `${base}?stake=${stake}` : null;
     }, [stake]);
 
+    // Log wsUrl after it is computed
+    useEffect(() => {
+        if (wsUrl) addDebugMessage(`WebSocket URL: ${wsUrl}`);
+    }, [wsUrl]);
+
+    // Initialize websocket before effects that depend on `connected`
     const { connected, send } = useGameSocket(wsUrl, {
         token: sessionId, // Use real session token
         onEvent: (evt) => {
@@ -200,16 +206,16 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
         }
     });
 
+    // Add connection status to debug messages (after `connected` is defined)
+    useEffect(() => {
+        addDebugMessage(`WebSocket ${connected ? 'connected' : 'disconnected'}`);
+    }, [connected]);
+
     const joinStake = (s) => {
         setStake(s);
         onStakeSelected?.(s);
         // Optionally inform server
         // send('join_lobby', { stake: s });
-    };
-
-    const addDebugMessage = (message) => {
-        const timestamp = new Date().toLocaleTimeString();
-        setDebugMessages(prev => [...prev.slice(-9), `${timestamp}: ${message}`]);
     };
 
     // Add initial debug message
