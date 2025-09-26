@@ -211,6 +211,21 @@ export default function Game({ onNavigate, onStakeSelected, selectedCartela, sel
         addDebugMessage(`WebSocket ${connected ? 'connected' : 'disconnected'}`);
     }, [connected]);
 
+    // Auto-send cartella selection when arriving from CartelaSelection page
+    useEffect(() => {
+        if (!connected) return;
+        const incoming = selectedCartela || pendingSelectedCardNumber;
+        if (!incoming) return;
+        // Only send if we do not already have a card and selection not yet confirmed
+        if (!myCard && !selectionConfirmed && (phase === 'registration' || phase === 'waiting')) {
+            try {
+                send('select_card', { gameId: gameId || null, cardNumber: incoming });
+                addDebugMessage(`Auto-sent select_card for cartella ${incoming}`);
+                setPendingSelectedCardNumber(incoming);
+            } catch (_) { }
+        }
+    }, [connected, selectedCartela, phase, gameId, myCard, selectionConfirmed]);
+
     const joinStake = (s) => {
         setStake(s);
         onStakeSelected?.(s);
