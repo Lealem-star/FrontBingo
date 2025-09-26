@@ -4,16 +4,18 @@ export function useGameSocket(url, { onEvent, token } = {}) {
     const wsRef = useRef(null);
     const [connected, setConnected] = useState(false);
     const [lastEvent, setLastEvent] = useState(null);
+    const pendingRef = useRef([]); // queue messages while socket not open
 
     const send = useCallback((type, payload) => {
         const ws = wsRef.current;
+        const message = JSON.stringify({ type, payload });
         console.log('WebSocket send attempt:', { type, payload, connected, readyState: ws?.readyState });
         if (ws && ws.readyState === WebSocket.OPEN) {
-            const message = JSON.stringify({ type, payload });
             console.log('Sending WebSocket message:', message);
             ws.send(message);
         } else {
-            console.warn('WebSocket not ready:', { connected, readyState: ws?.readyState });
+            console.warn('WebSocket not ready, queuing message:', { connected, readyState: ws?.readyState });
+            pendingRef.current.push(message);
         }
     }, [connected]);
 
@@ -32,6 +34,14 @@ export function useGameSocket(url, { onEvent, token } = {}) {
                 console.log('WebSocket connected');
                 setConnected(true);
                 retry = 0;
+                // Flush any queued messages
+                try {
+                    const queue = pendingRef.current;
+                    pendingRef.current = [];
+                    for (const msg of queue) {
+                        try { ws.send(msg); } catch (e) { console.warn('Failed to flush queued msg', e); }
+                    }
+                } catch { }
             };
             ws.onmessage = (e) => {
                 try {

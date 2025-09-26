@@ -30,7 +30,8 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
 
     // Realtime selection via websocket
     const wsUrl = useMemo(() => {
-        const base = import.meta.env.VITE_WS_URL || 'ws://localhost:3001/ws';
+        const base = import.meta.env.VITE_WS_URL ||
+            (window.location.hostname === 'localhost' ? 'ws://localhost:3001/ws' : 'wss://bingo-back-2evw.onrender.com/ws');
         return stake ? `${base}?stake=${stake}` : null;
     }, [stake]);
 
@@ -52,6 +53,10 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                         // If we joined mid-registration via snapshot, auto-send queued selection
                         if (evt.payload.phase === 'registration' && pendingSelection) {
                             try { send('select_card', { cardNumber: pendingSelection }); } catch (_) { }
+                        }
+                        // Proactively start registration when room is waiting
+                        if (evt.payload.phase === 'waiting') {
+                            try { send('start_registration', {}); } catch (_) { }
                         }
                     }
                     const serverTaken = evt.payload?.takenCards || [];
