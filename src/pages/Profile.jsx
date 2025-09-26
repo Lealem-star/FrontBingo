@@ -23,7 +23,7 @@ export default function Profile({ onNavigate }) {
     });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const { user, sessionId } = useAuth();
+    const { user, sessionId, isLoading: authLoading } = useAuth();
 
     const displayName = profileData.user?.firstName || user?.firstName || 'Player';
     const initials = displayName.charAt(0).toUpperCase();
@@ -31,7 +31,7 @@ export default function Profile({ onNavigate }) {
     // Fetch profile data
     useEffect(() => {
         const fetchProfileData = async () => {
-            if (!sessionId) {
+            if (authLoading || !sessionId) {
                 setLoading(false);
                 return;
             }
@@ -39,25 +39,22 @@ export default function Profile({ onNavigate }) {
                 setLoading(true);
                 setError(null);
 
-                // Add timeout to prevent infinite loading
-                const timeoutId = setTimeout(() => {
-                    setLoading(false);
-                    setError('Request timeout - please try again');
-                }, 10000); // 10 second timeout
-
                 const data = await apiFetch('/user/profile', { sessionId });
-                clearTimeout(timeoutId);
                 setProfileData(data);
             } catch (error) {
                 console.error('Failed to fetch profile data:', error);
-                setError(error.message);
+                if (error.message === 'request_timeout') {
+                    setError('Request timeout - please try again');
+                } else {
+                    setError('Failed to load profile. Please try again.');
+                }
             } finally {
                 setLoading(false);
             }
         };
 
         fetchProfileData();
-    }, [sessionId]);
+    }, [sessionId, authLoading]);
 
     return (
         <div className="profile-page">

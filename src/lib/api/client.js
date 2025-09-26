@@ -31,7 +31,7 @@ async function reauthenticateAndGetSession() {
     return null;
 }
 
-export async function apiFetch(path, { method = 'GET', body, sessionId, headers = {} } = {}) {
+export async function apiFetch(path, { method = 'GET', body, sessionId, headers = {}, timeoutMs = 10000 } = {}) {
     const apiBase = import.meta.env.VITE_API_URL ||
         (window.location.hostname === 'localhost' ? 'http://localhost:3001' :
             'https://bingo-back-2evw.onrender.com');
@@ -47,21 +47,44 @@ export async function apiFetch(path, { method = 'GET', body, sessionId, headers 
             requestHeaders['x-session'] = sid;
             requestHeaders['Authorization'] = `Bearer ${sid}`;
         }
-
-        return fetch(`${apiBase}${path}`, {
-            method,
-            headers: requestHeaders,
-            body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined),
-        });
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+            return await fetch(`${apiBase}${path}`, {
+                method,
+                headers: requestHeaders,
+                body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined),
+                signal: controller.signal
+            });
+        } finally {
+            clearTimeout(timer);
+        }
     };
 
     const initialSid = sessionId || localStorage.getItem('sessionId');
-    let res = await doRequest(initialSid);
+    let res;
+    try {
+        res = await doRequest(initialSid);
+    } catch (e) {
+        if (e?.name === 'AbortError') {
+            console.error('API request timed out:', path);
+            throw new Error('request_timeout');
+        }
+        throw e;
+    }
     if (res.status === 401) {
         // Token likely invalid for this environment; re-authenticate and retry once
         const newSid = await reauthenticateAndGetSession();
         if (newSid) {
-            res = await doRequest(newSid);
+            try {
+                res = await doRequest(newSid);
+            } catch (e) {
+                if (e?.name === 'AbortError') {
+                    console.error('API request timed out after reauth:', path);
+                    throw new Error('request_timeout');
+                }
+                throw e;
+            }
         }
     }
     if (!res.ok) {

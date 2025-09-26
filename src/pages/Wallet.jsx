@@ -4,7 +4,7 @@ import { useAuth } from '../lib/auth/AuthProvider.jsx';
 import { apiFetch } from '../lib/api/client.js';
 
 export default function Wallet({ onNavigate }) {
-    const { sessionId, user } = useAuth();
+    const { sessionId, user, isLoading: authLoading } = useAuth();
     const [wallet, setWallet] = useState({ main: 0, play: 0, coins: 0 });
     const [coins, setCoins] = useState('');
     const [loading, setLoading] = useState(true);
@@ -27,18 +27,13 @@ export default function Wallet({ onNavigate }) {
 
     // Fetch wallet and profile data once
     useEffect(() => {
-        if (!sessionId) {
+        if (authLoading || !sessionId) {
             setLoading(false);
             return;
         }
         const fetchData = async () => {
             try {
                 setLoading(true);
-
-                // Add timeout to prevent infinite loading
-                const timeoutId = setTimeout(() => {
-                    setLoading(false);
-                }, 10000); // 10 second timeout
 
                 // Fetch profile data which includes wallet information
                 try {
@@ -65,7 +60,6 @@ export default function Wallet({ onNavigate }) {
                         console.error('Wallet fetch error:', walletError);
                     }
                 }
-                clearTimeout(timeoutId);
             } catch (error) {
                 console.error('Failed to fetch wallet data:', error);
             } finally {
@@ -73,7 +67,7 @@ export default function Wallet({ onNavigate }) {
             }
         };
         fetchData();
-    }, [sessionId]); // Removed activeTab dependency
+    }, [sessionId, authLoading]); // Removed activeTab dependency
 
     // Fetch transactions only when history tab is active
     useEffect(() => {
@@ -82,12 +76,7 @@ export default function Wallet({ onNavigate }) {
         const fetchTransactions = async () => {
             try {
                 setHistoryLoading(true);
-                const timeoutId = setTimeout(() => {
-                    setHistoryLoading(false);
-                }, 10000); // 10 second timeout
-
                 const transactionData = await apiFetch('/user/transactions', { sessionId });
-                clearTimeout(timeoutId);
                 setTransactions(transactionData.transactions || []);
             } catch (error) {
                 console.error('Failed to fetch transactions:', error);
