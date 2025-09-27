@@ -1,19 +1,17 @@
-import React, { useState } from 'react';
+import React from 'react';
 import BottomNav from '../components/BottomNav';
 import { useAuth } from '../lib/auth/AuthProvider';
 import lbLogo from '../assets/lb.png';
 import StatsPanel from '../components/StatsPanel';
 
 export default function Game({ onNavigate, onStakeSelected, selectedStake }) {
-    const [stake, setStake] = useState(selectedStake);
     const adminPost = null;
     const joinStake = (s) => {
-        setStake(s);
         onStakeSelected?.(s);
     };
 
     // Show initial screen when no stake is selected
-    if (!stake) {
+    if (!selectedStake) {
         console.log('Rendering initial screen - no stake selected');
         return (
             <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-purple-900" style={{ position: 'relative' }}>

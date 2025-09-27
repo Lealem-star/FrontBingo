@@ -46,8 +46,10 @@ function App() {
 
 
   const handleStakeSelected = (stake) => {
+    console.log('Stake selected:', stake);
     setSelectedStake(stake);
     setCurrentPage('cartela-selection');
+    console.log('Navigating to cartela-selection');
   };
 
   const handleCartelaSelected = (cartela) => {
@@ -68,6 +70,7 @@ function App() {
   };
 
   const renderPage = () => {
+    console.log('Current page:', currentPage, 'Selected stake:', selectedStake);
     switch (currentPage) {
       case 'game':
         return <Game onNavigate={handleNavigate} onStakeSelected={handleStakeSelected} selectedCartela={selectedCartela} selectedStake={selectedStake} />;

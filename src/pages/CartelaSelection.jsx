@@ -54,6 +54,12 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                     });
                 } catch (walletErr) {
                     console.error('Error fetching wallet fallback:', walletErr);
+                    // Set default values if all requests fail
+                    setWallet({
+                        main: 0,
+                        play: 0,
+                        coins: 0
+                    });
                 }
             } finally {
                 setWalletLoading(false);
@@ -67,11 +73,20 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
     useEffect(() => {
         const fetchCards = async () => {
             try {
+                console.log('Fetching cartellas from /api/cartellas...');
                 setLoading(true);
+
+                // Try direct fetch first to test the endpoint
+                const directResponse = await fetch('/api/cartellas');
+                console.log('Direct fetch response status:', directResponse.status);
+
                 const response = await apiFetch('/api/cartellas');
+                console.log('Cartellas API response:', response);
                 if (response.success) {
+                    console.log('Cartellas loaded successfully:', response.cards?.length, 'cards');
                     setCards(response.cards);
                 } else {
+                    console.error('Cartellas API returned error:', response);
                     setError('Failed to load cards');
                 }
             } catch (err) {
@@ -102,7 +117,16 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                 }
             } catch (err) {
                 console.error('Error fetching game data:', err);
-                // Keep current state on error
+                // Set default game data if API fails
+                setGameData(prev => ({
+                    ...prev,
+                    countdown: 15,
+                    playersCount: 0,
+                    gameStatus: 'waiting',
+                    gameId: null,
+                    takenCartellas: [],
+                    recentSelections: []
+                }));
             }
         };
 
@@ -162,7 +186,6 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                 if (response.success) {
                     // Selection successful, proceed with game
                     onCartelaSelected?.(selectedCardNumber);
-                    showSuccess(`Cartella #${selectedCardNumber} selected successfully!`);
                 } else {
                     // Handle different error types
                     if (response.error === 'Cartella already taken') {
@@ -234,7 +257,10 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
         }
     }, [gameData.gameStatus]);
 
+    console.log('CartelaSelection render - loading:', loading, 'error:', error, 'cards:', cards.length);
+
     if (loading) {
+        console.log('Showing loading screen');
         return (
             <div className="app-container">
                 <header className="p-4">
@@ -287,6 +313,7 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
     }
 
     if (error) {
+        console.log('Showing error screen:', error);
         return (
             <div className="app-container">
                 <header className="p-4">
@@ -327,22 +354,101 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                         </div>
                     </div>
                 </header>
-                <main className="p-4 flex items-center justify-center min-h-96">
-                    <div className="text-center">
-                        <div className="text-lg text-red-400 mb-2">Error</div>
-                        <div className="text-sm text-gray-300 mb-4">{error}</div>
-                        <button
-                            onClick={() => { refreshWallet(); window.location.reload(); }}
-                            className="px-4 py-2 bg-blue-600 text-white rounded"
-                        >
-                            Retry
-                        </button>
+
+                {/* Show error message but still allow interaction */}
+                <div className="p-4">
+                    <div className="mb-4 p-3 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
+                        <div className="flex items-center gap-2 text-yellow-400">
+                            <span className="text-lg">⚠️</span>
+                            <div>
+                                <div className="font-semibold">Limited Mode</div>
+                                <div className="text-sm text-yellow-300">{error}</div>
+                            </div>
+                        </div>
                     </div>
+                </div>
+
+                <main className="p-4">
+                    {/* Number Selection Grid */}
+                    <div className="cartela-numbers-grid">
+                        {Array.from({ length: cards.length }, (_, i) => i + 1).map((cartelaNumber) => {
+                            const isTaken = gameData.takenCartellas.some(taken => taken.cartellaNumber === cartelaNumber);
+                            const isSelected = selectedCardNumber === cartelaNumber;
+                            const takenByMe = gameData.takenCartellas.find(taken =>
+                                taken.cartellaNumber === cartelaNumber && taken.playerId === sessionId
+                            );
+                            const hasInsufficientBalance = wallet.play < stake;
+                            const isDisabled = isTaken || hasInsufficientBalance;
+
+                            return (
+                                <button
+                                    key={cartelaNumber}
+                                    onClick={() => !isDisabled && handleCardSelect(cartelaNumber)}
+                                    disabled={isDisabled}
+                                    className={`cartela-number-btn ${isTaken
+                                        ? takenByMe
+                                            ? 'bg-green-600 text-white cursor-default'
+                                            : 'bg-red-600 text-white cursor-not-allowed opacity-60'
+                                        : hasInsufficientBalance
+                                            ? 'bg-gray-600 text-gray-400 cursor-not-allowed opacity-50'
+                                            : isSelected
+                                                ? 'bg-blue-600 text-white'
+                                                : 'hover:bg-blue-500'
+                                        }`}
+                                    title={
+                                        isTaken
+                                            ? takenByMe
+                                                ? 'Your selected cartella'
+                                                : `Taken by ${gameData.takenCartellas.find(t => t.cartellaNumber === cartelaNumber)?.playerName || 'another player'}`
+                                            : hasInsufficientBalance
+                                                ? `Insufficient balance! Need ${stake}, have ${wallet.play}`
+                                                : `Select cartella #${cartelaNumber}`
+                                    }
+                                >
+                                    {cartelaNumber}
+                                    {isTaken && !takenByMe && <span className="block text-xs">TAKEN</span>}
+                                    {takenByMe && <span className="block text-xs">YOURS</span>}
+                                    {hasInsufficientBalance && !isTaken && <span className="block text-xs">NO FUNDS</span>}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Selected Cartela Preview */}
+                    <div className="cartela-preview-section">
+                        {selectedCard ? (
+                            <CartellaCard
+                                id={selectedCardNumber}
+                                card={selectedCard}
+                                called={[]}
+                                selectedNumber={selectedCardNumber}
+                                isPreview={true}
+                            />
+                        ) : (
+                            <div className="text-center text-gray-400 py-8">
+                                Select a card number to preview
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Confirm Selection Button */}
+                    {selectedCardNumber && selectedCard && (
+                        <div className="mt-4 text-center">
+                            <button
+                                onClick={handleConfirmSelection}
+                                className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                            >
+                                Confirm Selection - Card #{selectedCardNumber}
+                            </button>
+                        </div>
+                    )}
                 </main>
                 <BottomNav current="game" onNavigate={onNavigate} />
             </div>
         );
     }
+
+    console.log('Rendering main CartelaSelection interface with', cards.length, 'cards');
 
     return (
         <div className="app-container">
@@ -379,12 +485,12 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                     </div>
                     <div className="timer-box">
                         <div className="timer-countdown">
-                            {countdown}s
+                            {gameData.countdown}s
                         </div>
                         <div className="timer-status">
-                            {gameStatus === 'waiting' && 'Waiting for players...'}
-                            {gameStatus === 'starting' && `Starting game... (${playersCount} players)`}
-                            {gameStatus === 'playing' && 'Game in progress!'}
+                            {gameData.gameStatus === 'waiting' && 'Waiting for players...'}
+                            {gameData.gameStatus === 'starting' && `Starting game... (${gameData.playersCount} players)`}
+                            {gameData.gameStatus === 'playing' && 'Game in progress!'}
                         </div>
                     </div>
                 </div>
