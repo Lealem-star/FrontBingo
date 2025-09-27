@@ -377,38 +377,31 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                             const takenByMe = gameData.takenCartellas.find(taken =>
                                 taken.cartellaNumber === cartelaNumber && taken.playerId === sessionId
                             );
-                            const hasInsufficientBalance = wallet.play < stake;
-                            const isDisabled = isTaken || hasInsufficientBalance;
 
                             return (
                                 <button
                                     key={cartelaNumber}
-                                    onClick={() => !isDisabled && handleCardSelect(cartelaNumber)}
-                                    disabled={isDisabled}
+                                    onClick={() => !isTaken && handleCardSelect(cartelaNumber)}
+                                    disabled={isTaken}
                                     className={`cartela-number-btn ${isTaken
                                         ? takenByMe
                                             ? 'bg-green-600 text-white cursor-default'
                                             : 'bg-red-600 text-white cursor-not-allowed opacity-60'
-                                        : hasInsufficientBalance
-                                            ? 'bg-gray-600 text-gray-400 cursor-not-allowed opacity-50'
-                                            : isSelected
-                                                ? 'bg-blue-600 text-white'
-                                                : 'hover:bg-blue-500'
+                                        : isSelected
+                                            ? 'bg-blue-600 text-white'
+                                            : 'hover:bg-blue-500'
                                         }`}
                                     title={
                                         isTaken
                                             ? takenByMe
                                                 ? 'Your selected cartella'
                                                 : `Taken by ${gameData.takenCartellas.find(t => t.cartellaNumber === cartelaNumber)?.playerName || 'another player'}`
-                                            : hasInsufficientBalance
-                                                ? `Insufficient balance! Need ${stake}, have ${wallet.play}`
-                                                : `Select cartella #${cartelaNumber}`
+                                            : `Select cartella #${cartelaNumber}`
                                     }
                                 >
                                     {cartelaNumber}
                                     {isTaken && !takenByMe && <span className="block text-xs">TAKEN</span>}
                                     {takenByMe && <span className="block text-xs">YOURS</span>}
-                                    {hasInsufficientBalance && !isTaken && <span className="block text-xs">NO FUNDS</span>}
                                 </button>
                             );
                         })}
@@ -497,27 +490,6 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
             </header>
 
             <main className="p-4">
-                {/* Balance Warning */}
-                {wallet.play < stake && (
-                    <div className="mb-4 p-4 bg-red-900/20 border border-red-500/30 rounded-lg">
-                        <div className="flex items-center gap-2 text-red-400">
-                            <span className="text-lg">⚠️</span>
-                            <div className="flex-1">
-                                <div className="font-semibold">Insufficient Balance</div>
-                                <div className="text-sm text-red-300">
-                                    You need {stake} to play, but only have {wallet.play} in your play wallet.
-                                    <span className="block mt-1">You need {stake - wallet.play} more to select a cartella.</span>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => onNavigate?.('wallet')}
-                                className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition-colors"
-                            >
-                                Add Funds
-                            </button>
-                        </div>
-                    </div>
-                )}
 
                 {/* Number Selection Grid */}
                 <div className="cartela-numbers-grid">
@@ -527,38 +499,31 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                         const takenByMe = gameData.takenCartellas.find(taken =>
                             taken.cartellaNumber === cartelaNumber && taken.playerId === sessionId
                         );
-                        const hasInsufficientBalance = wallet.play < stake;
-                        const isDisabled = isTaken || hasInsufficientBalance;
 
                         return (
                             <button
                                 key={cartelaNumber}
-                                onClick={() => !isDisabled && handleCardSelect(cartelaNumber)}
-                                disabled={isDisabled}
+                                onClick={() => !isTaken && handleCardSelect(cartelaNumber)}
+                                disabled={isTaken}
                                 className={`cartela-number-btn ${isTaken
                                     ? takenByMe
                                         ? 'bg-green-600 text-white cursor-default'
                                         : 'bg-red-600 text-white cursor-not-allowed opacity-60'
-                                    : hasInsufficientBalance
-                                        ? 'bg-gray-600 text-gray-400 cursor-not-allowed opacity-50'
-                                        : isSelected
-                                            ? 'bg-blue-600 text-white'
-                                            : 'hover:bg-blue-500'
+                                    : isSelected
+                                        ? 'bg-blue-600 text-white'
+                                        : 'hover:bg-blue-500'
                                     }`}
                                 title={
                                     isTaken
                                         ? takenByMe
                                             ? 'Your selected cartella'
                                             : `Taken by ${gameData.takenCartellas.find(t => t.cartellaNumber === cartelaNumber)?.playerName || 'another player'}`
-                                        : hasInsufficientBalance
-                                            ? `Insufficient balance! Need ${stake}, have ${wallet.play}`
-                                            : `Select cartella #${cartelaNumber}`
+                                        : `Select cartella #${cartelaNumber}`
                                 }
                             >
                                 {cartelaNumber}
                                 {isTaken && !takenByMe && <span className="block text-xs">TAKEN</span>}
                                 {takenByMe && <span className="block text-xs">YOURS</span>}
-                                {hasInsufficientBalance && !isTaken && <span className="block text-xs">NO FUNDS</span>}
                             </button>
                         );
                     })}

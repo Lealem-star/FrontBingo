@@ -1878,19 +1878,6 @@ body {
     box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
 }
 
-/* Insufficient balance cartella styles */
-.cartela-number-btn.bg-gray-600 {
-    background: rgba(75, 85, 99, 0.9) !important;
-    border-color: rgba(75, 85, 99, 0.5);
-    color: #9ca3af;
-    cursor: not-allowed;
-    opacity: 0.5;
-}
-
-.cartela-number-btn.bg-gray-600:hover {
-    transform: none;
-    box-shadow: none;
-}
 
 /* Toast notification animations */
 @keyframes slideInRight {
