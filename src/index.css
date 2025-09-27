@@ -1850,6 +1850,81 @@ body {
     transform: translateY(0);
 }
 
+/* Taken cartella styles */
+.cartela-number-btn.bg-red-600 {
+    background: rgba(220, 38, 38, 0.9) !important;
+    border-color: rgba(220, 38, 38, 0.5);
+    color: white;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.cartela-number-btn.bg-red-600:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* Your selected cartella styles */
+.cartela-number-btn.bg-green-600 {
+    background: rgba(34, 197, 94, 0.9) !important;
+    border-color: rgba(34, 197, 94, 0.5);
+    color: white;
+    cursor: default;
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+}
+
+.cartela-number-btn.bg-green-600:hover {
+    transform: none;
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+}
+
+/* Insufficient balance cartella styles */
+.cartela-number-btn.bg-gray-600 {
+    background: rgba(75, 85, 99, 0.9) !important;
+    border-color: rgba(75, 85, 99, 0.5);
+    color: #9ca3af;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.cartela-number-btn.bg-gray-600:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* Toast notification animations */
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+.toast-enter {
+    animation: slideInRight 0.3s ease-out;
+}
+
+.toast-exit {
+    animation: slideOutRight 0.3s ease-in;
+}
+
 .cartela-number-btn-selected {
     background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
     border-color: #fca5a5;
@@ -1945,6 +2020,24 @@ body {
     font-weight: 700;
     text-align: center;
     min-width: 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.timer-countdown {
+    font-size: 18px;
+    font-weight: 800;
+    color: #fbbf24;
+    text-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
+}
+
+.timer-status {
+    font-size: 10px;
+    font-weight: 500;
+    color: #a78bfa;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 /* Mobile responsive adjustments */
@@ -1986,6 +2079,14 @@ body {
         padding: 6px 10px;
         font-size: 14px;
         min-width: 50px;
+    }
+
+    .timer-countdown {
+        font-size: 16px;
+    }
+
+    .timer-status {
+        font-size: 8px;
     }
 }
 

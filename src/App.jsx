@@ -7,6 +7,7 @@ import History from './pages/History';
 import Wallet from './pages/Wallet';
 import Profile from './pages/Profile';
 import { AuthProvider } from './lib/auth/AuthProvider.jsx';
+import { ToastProvider } from './contexts/ToastContext.jsx';
 import AdminLayout from './admin/AdminLayout.jsx';
 
 function App() {
@@ -58,33 +59,43 @@ function App() {
     setCurrentPage('game');
   };
 
+  const handleNavigate = (page) => {
+    if (page === 'game' && currentPage === 'cartela-selection') {
+      // When navigating back to game from cartela selection, clear the stake
+      setSelectedStake(null);
+    }
+    setCurrentPage(page);
+  };
+
   const renderPage = () => {
     switch (currentPage) {
       case 'game':
-        return <Game onNavigate={setCurrentPage} onStakeSelected={handleStakeSelected} selectedCartela={selectedCartela} selectedStake={selectedStake} />;
+        return <Game onNavigate={handleNavigate} onStakeSelected={handleStakeSelected} selectedCartela={selectedCartela} selectedStake={selectedStake} />;
       case 'cartela-selection':
-        return <CartelaSelection onNavigate={setCurrentPage} stake={selectedStake} onCartelaSelected={handleCartelaSelected} />;
+        return <CartelaSelection onNavigate={handleNavigate} stake={selectedStake} onCartelaSelected={handleCartelaSelected} />;
       case 'admin':
-        return <AdminLayout onNavigate={setCurrentPage} />;
+        return <AdminLayout onNavigate={handleNavigate} />;
       case 'rules':
-        return <Rules onNavigate={setCurrentPage} />;
+        return <Rules onNavigate={handleNavigate} />;
       case 'scores':
-        return <Scores onNavigate={setCurrentPage} />;
+        return <Scores onNavigate={handleNavigate} />;
       // history removed
       case 'wallet':
-        return <Wallet onNavigate={setCurrentPage} />;
+        return <Wallet onNavigate={handleNavigate} />;
       case 'profile':
-        return <Profile onNavigate={setCurrentPage} />;
+        return <Profile onNavigate={handleNavigate} />;
       default:
-        return <Game onNavigate={setCurrentPage} onStakeSelected={handleStakeSelected} selectedCartela={selectedCartela} selectedStake={selectedStake} />;
+        return <Game onNavigate={handleNavigate} onStakeSelected={handleStakeSelected} selectedCartela={selectedCartela} selectedStake={selectedStake} />;
     }
   };
 
   return (
     <AuthProvider>
-      <div className="App">
-        {renderPage()}
-      </div>
+      <ToastProvider>
+        <div className="App">
+          {renderPage()}
+        </div>
+      </ToastProvider>
     </AuthProvider>
   );
 }

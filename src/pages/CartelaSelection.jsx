@@ -2,13 +2,66 @@ import React, { useState, useEffect } from 'react';
 import CartellaCard from '../components/CartellaCard';
 import BottomNav from '../components/BottomNav';
 import { apiFetch } from '../lib/api/client';
+import { useAuth } from '../lib/auth/AuthProvider';
+import { useToast } from '../contexts/ToastContext';
 
 export default function CartelaSelection({ onNavigate, stake, onCartelaSelected }) {
+    const { sessionId } = useAuth();
+    const { showError, showSuccess, showWarning } = useToast();
     const [cards, setCards] = useState([]);
     const [selectedCardNumber, setSelectedCardNumber] = useState(null);
     const [selectedCard, setSelectedCard] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [wallet, setWallet] = useState({ main: 0, play: 0, coins: 0 });
+    const [walletLoading, setWalletLoading] = useState(true);
+    const [gameData, setGameData] = useState({
+        countdown: 15,
+        playersCount: 0,
+        gameStatus: 'waiting', // 'waiting', 'starting', 'playing'
+        gameId: null,
+        takenCartellas: [],
+        recentSelections: []
+    });
+
+    // Fetch wallet data
+    useEffect(() => {
+        const fetchWallet = async () => {
+            if (!sessionId) {
+                setWalletLoading(false);
+                return;
+            }
+
+            try {
+                setWalletLoading(true);
+                const response = await apiFetch('/user/profile', { sessionId });
+                if (response.wallet) {
+                    setWallet({
+                        main: response.wallet.main || 0,
+                        play: response.wallet.play || 0,
+                        coins: response.wallet.coins || 0
+                    });
+                }
+            } catch (err) {
+                console.error('Error fetching wallet:', err);
+                // Fallback to direct wallet fetch
+                try {
+                    const walletResponse = await apiFetch('/wallet', { sessionId });
+                    setWallet({
+                        main: walletResponse.main || 0,
+                        play: walletResponse.play || 0,
+                        coins: walletResponse.coins || 0
+                    });
+                } catch (walletErr) {
+                    console.error('Error fetching wallet fallback:', walletErr);
+                }
+            } finally {
+                setWalletLoading(false);
+            }
+        };
+
+        fetchWallet();
+    }, [sessionId]);
 
     // Fetch all cards from server
     useEffect(() => {
@@ -32,8 +85,44 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
         fetchCards();
     }, []);
 
+    // Fetch game countdown data from backend
+    useEffect(() => {
+        const fetchGameData = async () => {
+            try {
+                const response = await apiFetch('/api/game/status');
+                if (response.success) {
+                    setGameData({
+                        countdown: response.countdown || 15,
+                        playersCount: response.playersCount || 0,
+                        gameStatus: response.gameStatus || 'waiting',
+                        gameId: response.gameId || null,
+                        takenCartellas: response.takenCartellas || [],
+                        recentSelections: response.recentSelections || []
+                    });
+                }
+            } catch (err) {
+                console.error('Error fetching game data:', err);
+                // Keep current state on error
+            }
+        };
+
+        // Fetch game data every 2 seconds for real-time updates
+        const gameDataInterval = setInterval(fetchGameData, 2000);
+
+        // Initial fetch
+        fetchGameData();
+
+        return () => clearInterval(gameDataInterval);
+    }, []);
+
     // Fetch specific card when selected
     const handleCardSelect = async (cardNumber) => {
+        // Check if player has sufficient balance first
+        if (wallet.play < stake) {
+            showError('Insufficient wallet balance. Please top up your wallet.');
+            return;
+        }
+
         try {
             const response = await apiFetch(`/api/cartellas/${cardNumber}`);
             if (response.success) {
@@ -41,18 +130,109 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                 setSelectedCard(response.card);
             } else {
                 console.error('Failed to load card:', response.error);
+                showError('Failed to load cartella. Please try again.');
             }
         } catch (err) {
             console.error('Error fetching card:', err);
+            showError('Failed to load cartella. Please try again.');
         }
     };
 
     // Handle card confirmation
-    const handleConfirmSelection = () => {
+    const handleConfirmSelection = async () => {
         if (selectedCardNumber && selectedCard) {
-            onCartelaSelected?.(selectedCardNumber);
+            try {
+                // Check if player has sufficient balance
+                if (wallet.play < stake) {
+                    showError('Insufficient wallet balance. Please top up your wallet.');
+                    return;
+                }
+
+                // Send selection to backend
+                const response = await apiFetch('/api/cartellas/select', {
+                    method: 'POST',
+                    body: {
+                        cartellaNumber: selectedCardNumber,
+                        playerId: sessionId || 'anonymous',
+                        playerName: 'Player', // TODO: Get actual player name
+                        stake: stake
+                    }
+                });
+
+                if (response.success) {
+                    // Selection successful, proceed with game
+                    onCartelaSelected?.(selectedCardNumber);
+                    showSuccess(`Cartella #${selectedCardNumber} selected successfully!`);
+                } else {
+                    // Handle different error types
+                    if (response.error === 'Cartella already taken') {
+                        showError('This cartella was just taken by another player! Please select a different one.');
+                        setSelectedCardNumber(null);
+                        setSelectedCard(null);
+                    } else if (response.error === 'Insufficient balance') {
+                        showError(`Insufficient balance! You need ${response.required} but only have ${response.available}. You need ${response.shortfall} more.`);
+                        setSelectedCardNumber(null);
+                        setSelectedCard(null);
+                    } else if (response.error === 'Player wallet not found') {
+                        showError('Wallet not found. Please refresh and try again.');
+                    } else {
+                        showError(`Failed to select cartella: ${response.error}`);
+                    }
+                }
+            } catch (err) {
+                console.error('Error selecting cartella:', err);
+                showError('Failed to select cartella. Please try again.');
+            }
         }
     };
+
+    // Refresh wallet data
+    const refreshWallet = async () => {
+        if (!sessionId) return;
+
+        try {
+            setWalletLoading(true);
+            const response = await apiFetch('/user/profile', { sessionId });
+            if (response.wallet) {
+                setWallet({
+                    main: response.wallet.main || 0,
+                    play: response.wallet.play || 0,
+                    coins: response.wallet.coins || 0
+                });
+            }
+        } catch (err) {
+            console.error('Error refreshing wallet:', err);
+            // Fallback to direct wallet fetch
+            try {
+                const walletResponse = await apiFetch('/wallet', { sessionId });
+                setWallet({
+                    main: walletResponse.main || 0,
+                    play: walletResponse.play || 0,
+                    coins: walletResponse.coins || 0
+                });
+            } catch (walletErr) {
+                console.error('Error refreshing wallet fallback:', walletErr);
+            }
+        } finally {
+            setWalletLoading(false);
+        }
+    };
+
+    // Handle game start
+    const handleGameStart = () => {
+        if (gameData.gameStatus === 'playing') {
+            // Game has started, navigate to game page or show game interface
+            console.log('Game started with', gameData.playersCount, 'players');
+            // TODO: Navigate to actual game or show game interface
+        }
+    };
+
+    // Effect to handle game start
+    useEffect(() => {
+        if (gameData.gameStatus === 'playing') {
+            handleGameStart();
+        }
+    }, [gameData.gameStatus]);
 
     if (loading) {
         return (
@@ -62,6 +242,37 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                         <button onClick={() => onNavigate?.('game')} className="header-button">
                             ← Back
                         </button>
+                    </div>
+                    {/* Wallet info during loading */}
+                    <div className="flex items-center justify-between">
+                        <div className="flex gap-2">
+                            <div className="wallet-box">
+                                <div className="wallet-label">Main Wallet</div>
+                                <div className="wallet-value text-blue-400">
+                                    {walletLoading ? '...' : wallet.main?.toLocaleString() || 0}
+                                </div>
+                            </div>
+                            <div className="wallet-box">
+                                <div className="wallet-label">Play Wallet</div>
+                                <div className="wallet-value text-green-400">
+                                    {walletLoading ? '...' : wallet.play?.toLocaleString() || 0}
+                                </div>
+                            </div>
+                            <div className="wallet-box">
+                                <div className="wallet-label">Stake</div>
+                                <div className="wallet-value">{stake}</div>
+                            </div>
+                        </div>
+                        <div className="timer-box">
+                            <div className="timer-countdown">
+                                {gameData.countdown}s
+                            </div>
+                            <div className="timer-status">
+                                {gameData.gameStatus === 'waiting' && 'Waiting for players...'}
+                                {gameData.gameStatus === 'starting' && `Starting game... (${gameData.playersCount} players)`}
+                                {gameData.gameStatus === 'playing' && 'Game in progress!'}
+                            </div>
+                        </div>
                     </div>
                 </header>
                 <main className="p-4 flex items-center justify-center min-h-96">
@@ -84,13 +295,44 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                             ← Back
                         </button>
                     </div>
+                    {/* Wallet info during error */}
+                    <div className="flex items-center justify-between">
+                        <div className="flex gap-2">
+                            <div className="wallet-box">
+                                <div className="wallet-label">Main Wallet</div>
+                                <div className="wallet-value text-blue-400">
+                                    {walletLoading ? '...' : wallet.main?.toLocaleString() || 0}
+                                </div>
+                            </div>
+                            <div className="wallet-box">
+                                <div className="wallet-label">Play Wallet</div>
+                                <div className="wallet-value text-green-400">
+                                    {walletLoading ? '...' : wallet.play?.toLocaleString() || 0}
+                                </div>
+                            </div>
+                            <div className="wallet-box">
+                                <div className="wallet-label">Stake</div>
+                                <div className="wallet-value">{stake}</div>
+                            </div>
+                        </div>
+                        <div className="timer-box">
+                            <div className="timer-countdown">
+                                {gameData.countdown}s
+                            </div>
+                            <div className="timer-status">
+                                {gameData.gameStatus === 'waiting' && 'Waiting for players...'}
+                                {gameData.gameStatus === 'starting' && `Starting game... (${gameData.playersCount} players)`}
+                                {gameData.gameStatus === 'playing' && 'Game in progress!'}
+                            </div>
+                        </div>
+                    </div>
                 </header>
                 <main className="p-4 flex items-center justify-center min-h-96">
                     <div className="text-center">
                         <div className="text-lg text-red-400 mb-2">Error</div>
                         <div className="text-sm text-gray-300 mb-4">{error}</div>
                         <button
-                            onClick={() => window.location.reload()}
+                            onClick={() => { refreshWallet(); window.location.reload(); }}
                             className="px-4 py-2 bg-blue-600 text-white rounded"
                         >
                             Retry
@@ -110,7 +352,7 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                     <button onClick={() => onNavigate?.('game')} className="header-button">
                         ← Back
                     </button>
-                    <button onClick={() => window.location.reload()} className="header-button">
+                    <button onClick={() => { refreshWallet(); window.location.reload(); }} className="header-button">
                         ↻ Refresh
                     </button>
                 </div>
@@ -119,9 +361,15 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                 <div className="flex items-center justify-between">
                     <div className="flex gap-2">
                         <div className="wallet-box">
-                            <div className="wallet-label">Wallet</div>
+                            <div className="wallet-label">Main Wallet</div>
+                            <div className="wallet-value text-blue-400">
+                                {walletLoading ? '...' : wallet.main?.toLocaleString() || 0}
+                            </div>
+                        </div>
+                        <div className="wallet-box">
+                            <div className="wallet-label">Play Wallet</div>
                             <div className="wallet-value text-green-400">
-                                1000
+                                {walletLoading ? '...' : wallet.play?.toLocaleString() || 0}
                             </div>
                         </div>
                         <div className="wallet-box">
@@ -130,24 +378,84 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                         </div>
                     </div>
                     <div className="timer-box">
-                        15 s
+                        <div className="timer-countdown">
+                            {countdown}s
+                        </div>
+                        <div className="timer-status">
+                            {gameStatus === 'waiting' && 'Waiting for players...'}
+                            {gameStatus === 'starting' && `Starting game... (${playersCount} players)`}
+                            {gameStatus === 'playing' && 'Game in progress!'}
+                        </div>
                     </div>
                 </div>
             </header>
 
             <main className="p-4">
+                {/* Balance Warning */}
+                {wallet.play < stake && (
+                    <div className="mb-4 p-4 bg-red-900/20 border border-red-500/30 rounded-lg">
+                        <div className="flex items-center gap-2 text-red-400">
+                            <span className="text-lg">⚠️</span>
+                            <div className="flex-1">
+                                <div className="font-semibold">Insufficient Balance</div>
+                                <div className="text-sm text-red-300">
+                                    You need {stake} to play, but only have {wallet.play} in your play wallet.
+                                    <span className="block mt-1">You need {stake - wallet.play} more to select a cartella.</span>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => onNavigate?.('wallet')}
+                                className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition-colors"
+                            >
+                                Add Funds
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {/* Number Selection Grid */}
                 <div className="cartela-numbers-grid">
-                    {Array.from({ length: cards.length }, (_, i) => i + 1).map((cartelaNumber) => (
-                        <button
-                            key={cartelaNumber}
-                            onClick={() => handleCardSelect(cartelaNumber)}
-                            className={`cartela-number-btn ${selectedCardNumber === cartelaNumber ? 'bg-blue-600 text-white' : ''
-                                }`}
-                        >
-                            {cartelaNumber}
-                        </button>
-                    ))}
+                    {Array.from({ length: cards.length }, (_, i) => i + 1).map((cartelaNumber) => {
+                        const isTaken = gameData.takenCartellas.some(taken => taken.cartellaNumber === cartelaNumber);
+                        const isSelected = selectedCardNumber === cartelaNumber;
+                        const takenByMe = gameData.takenCartellas.find(taken =>
+                            taken.cartellaNumber === cartelaNumber && taken.playerId === sessionId
+                        );
+                        const hasInsufficientBalance = wallet.play < stake;
+                        const isDisabled = isTaken || hasInsufficientBalance;
+
+                        return (
+                            <button
+                                key={cartelaNumber}
+                                onClick={() => !isDisabled && handleCardSelect(cartelaNumber)}
+                                disabled={isDisabled}
+                                className={`cartela-number-btn ${isTaken
+                                    ? takenByMe
+                                        ? 'bg-green-600 text-white cursor-default'
+                                        : 'bg-red-600 text-white cursor-not-allowed opacity-60'
+                                    : hasInsufficientBalance
+                                        ? 'bg-gray-600 text-gray-400 cursor-not-allowed opacity-50'
+                                        : isSelected
+                                            ? 'bg-blue-600 text-white'
+                                            : 'hover:bg-blue-500'
+                                    }`}
+                                title={
+                                    isTaken
+                                        ? takenByMe
+                                            ? 'Your selected cartella'
+                                            : `Taken by ${gameData.takenCartellas.find(t => t.cartellaNumber === cartelaNumber)?.playerName || 'another player'}`
+                                        : hasInsufficientBalance
+                                            ? `Insufficient balance! Need ${stake}, have ${wallet.play}`
+                                            : `Select cartella #${cartelaNumber}`
+                                }
+                            >
+                                {cartelaNumber}
+                                {isTaken && !takenByMe && <span className="block text-xs">TAKEN</span>}
+                                {takenByMe && <span className="block text-xs">YOURS</span>}
+                                {hasInsufficientBalance && !isTaken && <span className="block text-xs">NO FUNDS</span>}
+                            </button>
+                        );
+                    })}
                 </div>
 
                 {/* Selected Cartela Preview */}
@@ -176,6 +484,26 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                         >
                             Confirm Selection - Card #{selectedCardNumber}
                         </button>
+                    </div>
+                )}
+
+                {/* Recent Selections Display */}
+                {gameData.recentSelections && gameData.recentSelections.length > 0 && (
+                    <div className="mt-6">
+                        <h3 className="text-lg font-semibold text-white mb-3 text-center">Recent Selections</h3>
+                        <div className="bg-gray-800 rounded-lg p-4 max-h-32 overflow-y-auto">
+                            <div className="space-y-2">
+                                {gameData.recentSelections.slice(-5).map((selection, index) => (
+                                    <div key={index} className="flex justify-between items-center text-sm">
+                                        <span className="text-blue-400">Cartella #{selection.cartellaNumber}</span>
+                                        <span className="text-gray-400">{selection.playerName}</span>
+                                        <span className="text-gray-500 text-xs">
+                                            {new Date(selection.selectedAt).toLocaleTimeString()}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 )}
             </main>
