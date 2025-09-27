@@ -1,9 +1,9 @@
 import React from 'react';
-import { BingoCards } from '../data/cartellas.data';
 
-export default function CartellaCard({ id, called = [], selectedNumber = null, isPreview = false }) {
-    const grid = Array.isArray(BingoCards?.cards?.[id - 1]) ? BingoCards.cards[id - 1] : null;
-    if (!grid) return <div className="text-xs opacity-60">N/A</div>;
+export default function CartellaCard({ id, card, called = [], selectedNumber = null, isPreview = false }) {
+    // Use card prop if provided, otherwise fallback to null
+    const grid = card || null;
+    if (!grid) return <div className="text-xs opacity-60">Loading...</div>;
 
     const letters = ['B', 'I', 'N', 'G', 'O'];
     const letterColors = ['bg-blue-600', 'bg-purple-600', 'bg-green-600', 'bg-orange-600', 'bg-red-600'];

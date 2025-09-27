@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import BottomNav from '../components/BottomNav';
+import BottomNav from './BottomNav';
 
 export default function Rules({ onNavigate }) {
     const [activeTab, setActiveTab] = useState('cards');

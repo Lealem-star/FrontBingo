@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Game from './pages/Game';
 import CartelaSelection from './pages/CartelaSelection';
-import Rules from './pages/Rules';
+import Rules from './components/Rules';
 import Scores from './pages/Scores';
 import History from './pages/History';
 import Wallet from './pages/Wallet';
