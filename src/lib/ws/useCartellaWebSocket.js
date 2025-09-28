@@ -28,7 +28,10 @@ export function useCartellaWebSocket(stake, sessionId) {
     }, [connected]);
 
     useEffect(() => {
-        if (!stake || !sessionId) return;
+        if (!stake || !sessionId) {
+            console.log('WebSocket connection skipped - missing stake or sessionId:', { stake, sessionId });
+            return;
+        }
 
         let stopped = false;
         let retry = 0;
@@ -40,6 +43,8 @@ export function useCartellaWebSocket(stake, sessionId) {
                     'wss://bingo-back-2evw.onrender.com');
             const wsUrl = `${wsBase}/ws?token=${sessionId}&stake=${stake}`;
             console.log('Connecting to WebSocket:', wsUrl);
+            console.log('Session ID:', sessionId);
+            console.log('Stake:', stake);
 
             const ws = new WebSocket(wsUrl);
             wsRef.current = ws;
@@ -153,6 +158,10 @@ export function useCartellaWebSocket(stake, sessionId) {
 
             ws.onclose = (event) => {
                 console.log('Cartella WebSocket closed:', event.code, event.reason);
+                console.log('Close code meanings:');
+                console.log('- 1006: Abnormal closure (connection lost)');
+                console.log('- 1008: Policy violation (invalid token)');
+                console.log('- 1011: Server error');
                 setConnected(false);
                 if (heartbeat) {
                     clearInterval(heartbeat);

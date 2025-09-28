@@ -20,6 +20,16 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
     // WebSocket integration
     const { connected, gameState, selectCartella, startRegistration } = useCartellaWebSocket(stake, sessionId);
 
+    // Debug authentication
+    useEffect(() => {
+        console.log('CartelaSelection - Authentication Debug:', {
+            sessionId: sessionId ? 'Present' : 'Missing',
+            sessionIdLength: sessionId?.length || 0,
+            stake: stake,
+            connected: connected
+        });
+    }, [sessionId, stake, connected]);
+
     // Fetch wallet data
     useEffect(() => {
         const fetchWallet = async () => {
