@@ -1,4 +1,6 @@
 import React from 'react';
+import { useGameWebSocket } from '../lib/ws/useGameWebSocket';
+import { useAuth } from '../lib/auth/AuthProvider';
 
 export default function GameLayout({
     stake,
@@ -7,7 +9,14 @@ export default function GameLayout({
     prizePool = 0,
     gameId,
 }) {
-    // TODO: Implement game logic here
+    const { sessionId } = useAuth();
+    const { connected, gameState } = useGameWebSocket(gameId, sessionId);
+
+    // Use WebSocket data if available, otherwise fall back to props
+    const currentPlayersCount = gameState.playersCount || playersCount;
+    const currentPrizePool = gameState.prizePool || prizePool;
+    const calledNumbers = gameState.calledNumbers || [];
+    const currentNumber = gameState.currentNumber;
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-purple-900 relative overflow-hidden">
@@ -26,7 +35,7 @@ export default function GameLayout({
                     </div>
                     <div className="wallet-box flex-1 group">
                         <div className="wallet-label text-xs opacity-80">Players</div>
-                        <div className="wallet-value text-sm font-bold text-green-300">{playersCount}</div>
+                        <div className="wallet-value text-sm font-bold text-green-300">{currentPlayersCount}</div>
                     </div>
                     <div className="wallet-box flex-1 group">
                         <div className="wallet-label text-xs opacity-80">Bet</div>
@@ -34,13 +43,31 @@ export default function GameLayout({
                     </div>
                     <div className="wallet-box flex-1 group">
                         <div className="wallet-label text-xs opacity-80">Prize</div>
-                        <div className="wallet-value text-sm font-bold text-orange-300">ETB {prizePool}</div>
+                        <div className="wallet-value text-sm font-bold text-orange-300">ETB {currentPrizePool}</div>
                     </div>
                     <div className="wallet-box flex-1 group">
                         <div className="wallet-label text-xs opacity-80">Called</div>
-                        <div className="wallet-value text-sm font-bold text-pink-300">{called.length}/75</div>
+                        <div className="wallet-value text-sm font-bold text-pink-300">{calledNumbers.length}/75</div>
+                    </div>
+                    <div className="wallet-box flex-1 group">
+                        <div className="wallet-label text-xs opacity-80">Status</div>
+                        <div className="wallet-value text-sm font-bold text-purple-300">
+                            {connected ? '🟢' : '🔴'}
+                        </div>
                     </div>
                 </div>
+
+                {/* Current Number Display */}
+                {currentNumber && (
+                    <div className="mt-4 text-center">
+                        <div className="text-6xl font-bold text-yellow-300 animate-pulse">
+                            {currentNumber}
+                        </div>
+                        <div className="text-sm text-gray-300 mt-2">
+                            Last Called Number
+                        </div>
+                    </div>
+                )}
 
                 {/* Main Content Area - Enhanced 2 Column Layout */}
                 <div className="grid grid-cols-2 p-2 gap-3 mt-4">
@@ -50,62 +77,92 @@ export default function GameLayout({
                             {/* B Column */}
                             <div className="space-y-0.5">
                                 <div className="cartela-letter bg-gradient-to-b from-blue-500 to-blue-600 text-white font-bold text-center py-2 rounded-lg shadow-lg">B</div>
-                                {Array.from({ length: 15 }, (_, i) => i + 1).map(n => (
-                                    <button
-                                        key={n}
-                                        className="cartela-number-btn text-[10px] leading-none transition-all duration-200 bg-gradient-to-b from-slate-700/80 to-slate-800/80 text-slate-200"
-                                    >
-                                        {n}
-                                    </button>
-                                ))}
+                                {Array.from({ length: 15 }, (_, i) => i + 1).map(n => {
+                                    const isCalled = calledNumbers.includes(n);
+                                    return (
+                                        <button
+                                            key={n}
+                                            className={`cartela-number-btn text-[10px] leading-none transition-all duration-200 ${isCalled
+                                                    ? 'bg-gradient-to-b from-green-500 to-green-600 text-white animate-pulse'
+                                                    : 'bg-gradient-to-b from-slate-700/80 to-slate-800/80 text-slate-200'
+                                                }`}
+                                        >
+                                            {n}
+                                        </button>
+                                    );
+                                })}
                             </div>
                             {/* I Column */}
                             <div className="space-y-0.5">
                                 <div className="cartela-letter bg-gradient-to-b from-purple-500 to-purple-600 text-white font-bold text-center py-2 rounded-lg shadow-lg">I</div>
-                                {Array.from({ length: 15 }, (_, i) => i + 16).map(n => (
-                                    <button
-                                        key={n}
-                                        className="cartela-number-btn text-[10px] leading-none transition-all duration-200 bg-gradient-to-b from-slate-700/80 to-slate-800/80 text-slate-200"
-                                    >
-                                        {n}
-                                    </button>
-                                ))}
+                                {Array.from({ length: 15 }, (_, i) => i + 16).map(n => {
+                                    const isCalled = calledNumbers.includes(n);
+                                    return (
+                                        <button
+                                            key={n}
+                                            className={`cartela-number-btn text-[10px] leading-none transition-all duration-200 ${isCalled
+                                                    ? 'bg-gradient-to-b from-green-500 to-green-600 text-white animate-pulse'
+                                                    : 'bg-gradient-to-b from-slate-700/80 to-slate-800/80 text-slate-200'
+                                                }`}
+                                        >
+                                            {n}
+                                        </button>
+                                    );
+                                })}
                             </div>
                             {/* N Column */}
                             <div className="space-y-0.5">
                                 <div className="cartela-letter bg-gradient-to-b from-green-500 to-green-600 text-white font-bold text-center py-2 rounded-lg shadow-lg">N</div>
-                                {Array.from({ length: 15 }, (_, i) => i + 31).map(n => (
-                                    <button
-                                        key={n}
-                                        className="cartela-number-btn text-[10px] leading-none transition-all duration-200 bg-gradient-to-b from-slate-700/80 to-slate-800/80 text-slate-200"
-                                    >
-                                        {n}
-                                    </button>
-                                ))}
+                                {Array.from({ length: 15 }, (_, i) => i + 31).map(n => {
+                                    const isCalled = calledNumbers.includes(n);
+                                    return (
+                                        <button
+                                            key={n}
+                                            className={`cartela-number-btn text-[10px] leading-none transition-all duration-200 ${isCalled
+                                                    ? 'bg-gradient-to-b from-green-500 to-green-600 text-white animate-pulse'
+                                                    : 'bg-gradient-to-b from-slate-700/80 to-slate-800/80 text-slate-200'
+                                                }`}
+                                        >
+                                            {n}
+                                        </button>
+                                    );
+                                })}
                             </div>
                             {/* G Column */}
                             <div className="space-y-0.5">
                                 <div className="cartela-letter bg-gradient-to-b from-orange-500 to-orange-600 text-white font-bold text-center py-2 rounded-lg shadow-lg">G</div>
-                                {Array.from({ length: 15 }, (_, i) => i + 46).map(n => (
-                                    <button
-                                        key={n}
-                                        className="cartela-number-btn text-[10px] leading-none transition-all duration-200 bg-gradient-to-b from-slate-700/80 to-slate-800/80 text-slate-200"
-                                    >
-                                        {n}
-                                    </button>
-                                ))}
+                                {Array.from({ length: 15 }, (_, i) => i + 46).map(n => {
+                                    const isCalled = calledNumbers.includes(n);
+                                    return (
+                                        <button
+                                            key={n}
+                                            className={`cartela-number-btn text-[10px] leading-none transition-all duration-200 ${isCalled
+                                                    ? 'bg-gradient-to-b from-green-500 to-green-600 text-white animate-pulse'
+                                                    : 'bg-gradient-to-b from-slate-700/80 to-slate-800/80 text-slate-200'
+                                                }`}
+                                        >
+                                            {n}
+                                        </button>
+                                    );
+                                })}
                             </div>
                             {/* O Column */}
                             <div className="space-y-0.5">
                                 <div className="cartela-letter bg-gradient-to-b from-red-500 to-red-600 text-white font-bold text-center py-2 rounded-lg shadow-lg">O</div>
-                                {Array.from({ length: 15 }, (_, i) => i + 61).map(n => (
-                                    <button
-                                        key={n}
-                                        className="cartela-number-btn text-[10px] leading-none transition-all duration-200 bg-gradient-to-b from-slate-700/80 to-slate-800/80 text-slate-200"
-                                    >
-                                        {n}
-                                    </button>
-                                ))}
+                                {Array.from({ length: 15 }, (_, i) => i + 61).map(n => {
+                                    const isCalled = calledNumbers.includes(n);
+                                    return (
+                                        <button
+                                            key={n}
+                                            className={`cartela-number-btn text-[10px] leading-none transition-all duration-200 ${isCalled
+                                                    ? 'bg-gradient-to-b from-green-500 to-green-600 text-white animate-pulse'
+                                                    : 'bg-gradient-to-b from-slate-700/80 to-slate-800/80 text-slate-200'
+                                                }`}
+                                        >
+                                            {n}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>

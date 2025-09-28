@@ -4,6 +4,7 @@ import BottomNav from '../components/BottomNav';
 import { apiFetch } from '../lib/api/client';
 import { useAuth } from '../lib/auth/AuthProvider';
 import { useToast } from '../contexts/ToastContext';
+import { useCartellaWebSocket } from '../lib/ws/useCartellaWebSocket';
 
 export default function CartelaSelection({ onNavigate, stake, onCartelaSelected }) {
     const { sessionId } = useAuth();
@@ -15,14 +16,9 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
     const [error, setError] = useState(null);
     const [wallet, setWallet] = useState({ main: 0, play: 0, coins: 0 });
     const [walletLoading, setWalletLoading] = useState(true);
-    const [gameData, setGameData] = useState({
-        countdown: 15,
-        playersCount: 0,
-        gameStatus: 'waiting', // 'waiting', 'starting', 'playing'
-        gameId: null,
-        takenCartellas: [],
-        recentSelections: []
-    });
+
+    // WebSocket integration
+    const { connected, gameState, selectCartella, startRegistration } = useCartellaWebSocket(stake, sessionId);
 
     // Fetch wallet data
     useEffect(() => {
@@ -100,44 +96,14 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
         fetchCards();
     }, []);
 
-    // Fetch game countdown data from backend
+    // Handle game state changes
     useEffect(() => {
-        const fetchGameData = async () => {
-            try {
-                const response = await apiFetch('/api/game/status');
-                if (response.success) {
-                    setGameData({
-                        countdown: response.countdown || 15,
-                        playersCount: response.playersCount || 0,
-                        gameStatus: response.gameStatus || 'waiting',
-                        gameId: response.gameId || null,
-                        takenCartellas: response.takenCartellas || [],
-                        recentSelections: response.recentSelections || []
-                    });
-                }
-            } catch (err) {
-                console.error('Error fetching game data:', err);
-                // Set default game data if API fails
-                setGameData(prev => ({
-                    ...prev,
-                    countdown: 15,
-                    playersCount: 0,
-                    gameStatus: 'waiting',
-                    gameId: null,
-                    takenCartellas: [],
-                    recentSelections: []
-                }));
-            }
-        };
-
-        // Fetch game data every 2 seconds for real-time updates
-        const gameDataInterval = setInterval(fetchGameData, 2000);
-
-        // Initial fetch
-        fetchGameData();
-
-        return () => clearInterval(gameDataInterval);
-    }, []);
+        if (gameState.phase === 'running' && gameState.gameId) {
+            // Game has started, navigate to game layout
+            console.log('Game started, navigating to game layout');
+            onCartelaSelected?.(selectedCardNumber);
+        }
+    }, [gameState.phase, gameState.gameId, selectedCardNumber, onCartelaSelected]);
 
     // Fetch specific card when selected
     const handleCardSelect = async (cardNumber) => {
@@ -147,13 +113,19 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
             return;
         }
 
+        // Check if card is already taken
+        if (gameState.takenCards.includes(cardNumber)) {
+            showError('This cartella is already taken by another player!');
+            return;
+        }
+
         try {
+            // Fetch card data for preview
             const response = await apiFetch(`/api/cartellas/${cardNumber}`);
             if (response.success) {
                 setSelectedCardNumber(cardNumber);
                 setSelectedCard(response.card);
             } else {
-                console.error('Failed to load card:', response.error);
                 showError('Failed to load cartella. Please try again.');
             }
         } catch (err) {
@@ -162,7 +134,7 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
         }
     };
 
-    // Handle card confirmation
+    // Handle card confirmation via WebSocket
     const handleConfirmSelection = async () => {
         if (selectedCardNumber && selectedCard) {
             try {
@@ -172,35 +144,14 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                     return;
                 }
 
-                // Send selection to backend
-                const response = await apiFetch('/api/cartellas/select', {
-                    method: 'POST',
-                    body: {
-                        cartellaNumber: selectedCardNumber,
-                        playerId: sessionId || 'anonymous',
-                        playerName: 'Player', // TODO: Get actual player name
-                        stake: stake
-                    }
-                });
+                // Send selection via WebSocket
+                const success = selectCartella(selectedCardNumber);
 
-                if (response.success) {
-                    // Selection successful, proceed with game
-                    onCartelaSelected?.(selectedCardNumber);
+                if (success) {
+                    showSuccess(`Cartella #${selectedCardNumber} selected! Waiting for game to start...`);
+                    // The WebSocket will handle the rest
                 } else {
-                    // Handle different error types
-                    if (response.error === 'Cartella already taken') {
-                        showError('This cartella was just taken by another player! Please select a different one.');
-                        setSelectedCardNumber(null);
-                        setSelectedCard(null);
-                    } else if (response.error === 'Insufficient balance') {
-                        showError(`Insufficient balance! You need ${response.required} but only have ${response.available}. You need ${response.shortfall} more.`);
-                        setSelectedCardNumber(null);
-                        setSelectedCard(null);
-                    } else if (response.error === 'Player wallet not found') {
-                        showError('Wallet not found. Please refresh and try again.');
-                    } else {
-                        showError(`Failed to select cartella: ${response.error}`);
-                    }
+                    showError('Failed to select cartella. Please try again.');
                 }
             } catch (err) {
                 console.error('Error selecting cartella:', err);
@@ -241,22 +192,6 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
         }
     };
 
-    // Handle game start
-    const handleGameStart = () => {
-        if (gameData.gameStatus === 'playing') {
-            // Game has started, navigate to game page or show game interface
-            console.log('Game started with', gameData.playersCount, 'players');
-            // TODO: Navigate to actual game or show game interface
-        }
-    };
-
-    // Effect to handle game start
-    useEffect(() => {
-        if (gameData.gameStatus === 'playing') {
-            handleGameStart();
-        }
-    }, [gameData.gameStatus]);
-
     console.log('CartelaSelection render - loading:', loading, 'error:', error, 'cards:', cards.length);
 
     if (loading) {
@@ -291,12 +226,16 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                         </div>
                         <div className="timer-box">
                             <div className="timer-countdown">
-                                {gameData.countdown}s
+                                {gameState.countdown}s
                             </div>
                             <div className="timer-status">
-                                {gameData.gameStatus === 'waiting' && 'Waiting for players...'}
-                                {gameData.gameStatus === 'starting' && `Starting game... (${gameData.playersCount} players)`}
-                                {gameData.gameStatus === 'playing' && 'Game in progress!'}
+                                {gameState.phase === 'waiting' && 'Waiting for players...'}
+                                {gameState.phase === 'registration' && `Registration open... (${gameState.playersCount} players)`}
+                                {gameState.phase === 'starting' && `Starting game... (${gameState.playersCount} players)`}
+                                {gameState.phase === 'running' && 'Game in progress!'}
+                            </div>
+                            <div className="connection-status">
+                                {connected ? '🟢 Connected' : '🔴 Disconnected'}
                             </div>
                         </div>
                     </div>
@@ -344,12 +283,19 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                         </div>
                         <div className="timer-box">
                             <div className="timer-countdown">
-                                {gameData.countdown}s
+                                {gameState.countdown}s
                             </div>
                             <div className="timer-status">
-                                {gameData.gameStatus === 'waiting' && 'Waiting for players...'}
-                                {gameData.gameStatus === 'starting' && `Starting game... (${gameData.playersCount} players)`}
-                                {gameData.gameStatus === 'playing' && 'Game in progress!'}
+                                {gameState.phase === 'waiting' && 'Waiting for players...'}
+                                {gameState.phase === 'registration' && `Registration open... (${gameState.playersCount} players)`}
+                                {gameState.phase === 'starting' && `Starting game... (${gameState.playersCount} players)`}
+                                {gameState.phase === 'running' && 'Game in progress!'}
+                            </div>
+                            <div className="prize-pool">
+                                Prize Pool: ETB {gameState.prizePool || 0}
+                            </div>
+                            <div className="connection-status">
+                                {connected ? '🟢 Connected' : '🔴 Disconnected'}
                             </div>
                         </div>
                     </div>
@@ -494,17 +440,15 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                 {/* Number Selection Grid */}
                 <div className="cartela-numbers-grid">
                     {Array.from({ length: cards.length }, (_, i) => i + 1).map((cartelaNumber) => {
-                        const isTaken = gameData.takenCartellas.some(taken => taken.cartellaNumber === cartelaNumber);
+                        const isTaken = gameState.takenCards.includes(cartelaNumber);
                         const isSelected = selectedCardNumber === cartelaNumber;
-                        const takenByMe = gameData.takenCartellas.find(taken =>
-                            taken.cartellaNumber === cartelaNumber && taken.playerId === sessionId
-                        );
+                        const takenByMe = gameState.yourSelection === cartelaNumber;
 
                         return (
                             <button
                                 key={cartelaNumber}
                                 onClick={() => !isTaken && handleCardSelect(cartelaNumber)}
-                                disabled={isTaken}
+                                disabled={isTaken || gameState.phase === 'running'}
                                 className={`cartela-number-btn ${isTaken
                                     ? takenByMe
                                         ? 'bg-green-600 text-white cursor-default'
@@ -517,7 +461,7 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                                     isTaken
                                         ? takenByMe
                                             ? 'Your selected cartella'
-                                            : `Taken by ${gameData.takenCartellas.find(t => t.cartellaNumber === cartelaNumber)?.playerName || 'another player'}`
+                                            : 'Taken by another player'
                                         : `Select cartella #${cartelaNumber}`
                                 }
                             >
