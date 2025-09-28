@@ -36,7 +36,10 @@ export function useGameWebSocket(gameId, sessionId) {
         let heartbeat = null;
 
         const connect = () => {
-            const wsUrl = `ws://localhost:3001/ws?token=${sessionId}&gameId=${gameId}`;
+            const wsBase = import.meta.env.VITE_WS_URL ||
+                (window.location.hostname === 'localhost' ? 'ws://localhost:3001' :
+                    'wss://bingo-back-2evw.onrender.com');
+            const wsUrl = `${wsBase}/ws?token=${sessionId}&gameId=${gameId}`;
             console.log('Connecting to Game WebSocket:', wsUrl);
 
             const ws = new WebSocket(wsUrl);

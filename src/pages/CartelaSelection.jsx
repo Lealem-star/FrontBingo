@@ -315,43 +315,6 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                 </div>
 
                 <main className="p-4">
-                    {/* Number Selection Grid */}
-                    <div className="cartela-numbers-grid">
-                        {Array.from({ length: cards.length }, (_, i) => i + 1).map((cartelaNumber) => {
-                            const isTaken = gameData.takenCartellas.some(taken => taken.cartellaNumber === cartelaNumber);
-                            const isSelected = selectedCardNumber === cartelaNumber;
-                            const takenByMe = gameData.takenCartellas.find(taken =>
-                                taken.cartellaNumber === cartelaNumber && taken.playerId === sessionId
-                            );
-
-                            return (
-                                <button
-                                    key={cartelaNumber}
-                                    onClick={() => !isTaken && handleCardSelect(cartelaNumber)}
-                                    disabled={isTaken}
-                                    className={`cartela-number-btn ${isTaken
-                                        ? takenByMe
-                                            ? 'bg-green-600 text-white cursor-default'
-                                            : 'bg-red-600 text-white cursor-not-allowed opacity-60'
-                                        : isSelected
-                                            ? 'bg-blue-600 text-white'
-                                            : 'hover:bg-blue-500'
-                                        }`}
-                                    title={
-                                        isTaken
-                                            ? takenByMe
-                                                ? 'Your selected cartella'
-                                                : `Taken by ${gameData.takenCartellas.find(t => t.cartellaNumber === cartelaNumber)?.playerName || 'another player'}`
-                                            : `Select cartella #${cartelaNumber}`
-                                    }
-                                >
-                                    {cartelaNumber}
-                                    {isTaken && !takenByMe && <span className="block text-xs">TAKEN</span>}
-                                    {takenByMe && <span className="block text-xs">YOURS</span>}
-                                </button>
-                            );
-                        })}
-                    </div>
 
                     {/* Selected Cartela Preview */}
                     <div className="cartela-preview-section">
@@ -424,12 +387,19 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                     </div>
                     <div className="timer-box">
                         <div className="timer-countdown">
-                            {gameData.countdown}s
+                            {gameState.countdown}s
                         </div>
                         <div className="timer-status">
-                            {gameData.gameStatus === 'waiting' && 'Waiting for players...'}
-                            {gameData.gameStatus === 'starting' && `Starting game... (${gameData.playersCount} players)`}
-                            {gameData.gameStatus === 'playing' && 'Game in progress!'}
+                            {gameState.phase === 'waiting' && 'Waiting for players...'}
+                            {gameState.phase === 'registration' && `Registration open... (${gameState.playersCount} players)`}
+                            {gameState.phase === 'starting' && `Starting game... (${gameState.playersCount} players)`}
+                            {gameState.phase === 'running' && 'Game in progress!'}
+                        </div>
+                        <div className="prize-pool">
+                            Prize Pool: ETB {gameState.prizePool || 0}
+                        </div>
+                        <div className="connection-status">
+                            {connected ? '🟢 Connected' : '🔴 Disconnected'}
                         </div>
                     </div>
                 </div>
@@ -503,20 +473,14 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                 )}
 
                 {/* Recent Selections Display */}
-                {gameData.recentSelections && gameData.recentSelections.length > 0 && (
+                {gameState.playersCount > 0 && (
                     <div className="mt-6">
-                        <h3 className="text-lg font-semibold text-white mb-3 text-center">Recent Selections</h3>
-                        <div className="bg-gray-800 rounded-lg p-4 max-h-32 overflow-y-auto">
-                            <div className="space-y-2">
-                                {gameData.recentSelections.slice(-5).map((selection, index) => (
-                                    <div key={index} className="flex justify-between items-center text-sm">
-                                        <span className="text-blue-400">Cartella #{selection.cartellaNumber}</span>
-                                        <span className="text-gray-400">{selection.playerName}</span>
-                                        <span className="text-gray-500 text-xs">
-                                            {new Date(selection.selectedAt).toLocaleTimeString()}
-                                        </span>
-                                    </div>
-                                ))}
+                        <h3 className="text-lg font-semibold text-white mb-3 text-center">Game Status</h3>
+                        <div className="bg-gray-800 rounded-lg p-4">
+                            <div className="text-center text-sm">
+                                <span className="text-blue-400">{gameState.playersCount} player(s) joined</span>
+                                <br />
+                                <span className="text-gray-400">Prize Pool: ETB {gameState.prizePool || 0}</span>
                             </div>
                         </div>
                     </div>

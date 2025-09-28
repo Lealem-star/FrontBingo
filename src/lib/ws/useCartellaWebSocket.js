@@ -34,7 +34,10 @@ export function useCartellaWebSocket(stake, sessionId) {
         let heartbeat = null;
 
         const connect = () => {
-            const wsUrl = `ws://localhost:3001/ws?token=${sessionId}&stake=${stake}`;
+            const wsBase = import.meta.env.VITE_WS_URL ||
+                (window.location.hostname === 'localhost' ? 'ws://localhost:3001' :
+                    'wss://bingo-back-2evw.onrender.com');
+            const wsUrl = `${wsBase}/ws?token=${sessionId}&stake=${stake}`;
             console.log('Connecting to WebSocket:', wsUrl);
 
             const ws = new WebSocket(wsUrl);
