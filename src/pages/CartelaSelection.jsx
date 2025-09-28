@@ -297,6 +297,9 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                             <div className="connection-status">
                                 {connected ? '🟢 Connected' : '🔴 Disconnected'}
                             </div>
+                            <div className="debug-info text-xs text-gray-400">
+                                Phase: {gameState.phase} | Players: {gameState.playersCount}
+                            </div>
                         </div>
                     </div>
                 </header>

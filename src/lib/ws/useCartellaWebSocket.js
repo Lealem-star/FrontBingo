@@ -10,7 +10,8 @@ export function useCartellaWebSocket(stake, sessionId) {
         countdown: 15,
         takenCards: [],
         prizePool: 0,
-        yourSelection: null
+        yourSelection: null,
+        registrationEndTime: null
     });
     const [lastEvent, setLastEvent] = useState(null);
 
@@ -74,6 +75,9 @@ export function useCartellaWebSocket(stake, sessionId) {
                             break;
 
                         case 'registration_open':
+                            const endTime = event.payload.endsAt;
+                            const remainingSeconds = Math.ceil((endTime - Date.now()) / 1000);
+                            console.log('Registration opened:', { endTime, remainingSeconds, endsAt: event.payload.endsAt });
                             setGameState(prev => ({
                                 ...prev,
                                 phase: 'registration',
@@ -81,8 +85,8 @@ export function useCartellaWebSocket(stake, sessionId) {
                                 playersCount: event.payload.playersCount,
                                 takenCards: event.payload.takenCards || [],
                                 prizePool: event.payload.prizePool || 0,
-                                registrationEndTime: event.payload.endsAt,
-                                countdown: Math.ceil((event.payload.endsAt - Date.now()) / 1000)
+                                registrationEndTime: endTime,
+                                countdown: Math.max(0, remainingSeconds)
                             }));
                             break;
 
@@ -165,7 +169,9 @@ export function useCartellaWebSocket(stake, sessionId) {
 
             ws.onerror = (error) => {
                 console.error('Cartella WebSocket error:', error);
-                ws.close();
+                console.error('WebSocket URL:', wsUrl);
+                console.error('WebSocket readyState:', ws.readyState);
+                setConnected(false);
             };
 
             // Start heartbeat keepalive every 20s
@@ -238,9 +244,20 @@ export function useCartellaWebSocket(stake, sessionId) {
             return false;
         }
 
+        console.log('Starting registration manually...');
         send('start_registration', {});
         return true;
     }, [connected, send]);
+
+    // Auto-start registration when WebSocket connects
+    useEffect(() => {
+        if (connected && gameState.phase === 'waiting') {
+            console.log('WebSocket connected, starting registration...');
+            setTimeout(() => {
+                startRegistration();
+            }, 1000); // Small delay to ensure connection is stable
+        }
+    }, [connected, gameState.phase, startRegistration]);
 
     return {
         connected,
