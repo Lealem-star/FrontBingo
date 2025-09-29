@@ -14,7 +14,6 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
     const [error, setError] = useState(null);
     const [wallet, setWallet] = useState({ main: 0, play: 0, coins: 0 });
     const [walletLoading, setWalletLoading] = useState(true);
-    const [selectedCardPreview, setSelectedCardPreview] = useState(null);
 
     // WebSocket integration
     const { connected, gameState, selectCartella, startRegistration } = useCartellaWebSocket(stake, sessionId);
@@ -108,14 +107,13 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
     // Handle game state changes
     useEffect(() => {
         if (gameState.phase === 'running' && gameState.gameId) {
-            // Game has started, clear preview and navigate to game layout
+            // Game has started, navigate to game layout
             console.log('Game started, navigating to game layout');
-            setSelectedCardPreview(null); // Clear preview
             onCartelaSelected?.(gameState.yourSelection);
         }
     }, [gameState.phase, gameState.gameId, gameState.yourSelection, onCartelaSelected]);
 
-    // Automatic cartella selection with preview
+    // Simple automatic cartella selection
     const handleAutomaticSelection = async (cardNumber) => {
         try {
             // Check if player has sufficient balance
@@ -124,33 +122,18 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                 return;
             }
 
-            // First, fetch the card data for preview
-            const response = await apiFetch(`/api/cartellas/${cardNumber}`);
-            if (!response.success) {
-                showError('Failed to load cartella. Please try again.');
-                return;
-            }
-
-            // Set preview immediately
-            setSelectedCardPreview({
-                cardNumber: cardNumber,
-                card: response.card
-            });
-
-            // Then send selection via WebSocket
+            // Send selection via WebSocket immediately
             const success = selectCartella(cardNumber);
 
             if (success) {
-                showSuccess(`Cartella #${cardNumber} selected! Waiting for game to start...`);
+                showSuccess(`Cartella #${cardNumber} selected! Game starting...`);
                 // The WebSocket will handle the rest
             } else {
                 showError('Failed to select cartella. Please try again.');
-                setSelectedCardPreview(null); // Clear preview on failure
             }
         } catch (err) {
             console.error('Error selecting cartella:', err);
             showError('Failed to select cartella. Please try again.');
-            setSelectedCardPreview(null); // Clear preview on error
         }
     };
 
@@ -404,12 +387,11 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
 
             <main className="p-4">
 
-                {/* Number Selection Grid - Automatic Selection */}
+                {/* Number Selection Grid - Simple Automatic Selection */}
                 <div className="cartela-numbers-grid">
                     {Array.from({ length: cards.length }, (_, i) => i + 1).map((cartelaNumber) => {
                         const isTaken = gameState.takenCards.includes(cartelaNumber);
                         const takenByMe = gameState.yourSelection === cartelaNumber;
-                        const isPreviewSelected = selectedCardPreview?.cardNumber === cartelaNumber;
 
                         return (
                             <button
@@ -420,52 +402,36 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                                     ? takenByMe
                                         ? 'bg-green-600 text-white cursor-default'
                                         : 'bg-red-600 text-white cursor-not-allowed opacity-60'
-                                    : isPreviewSelected
-                                        ? 'bg-yellow-600 text-white animate-pulse'
-                                        : 'hover:bg-blue-500 bg-blue-600 text-white'
+                                    : 'hover:bg-blue-500 bg-blue-600 text-white'
                                     }`}
                                 title={
                                     isTaken
                                         ? takenByMe
                                             ? 'Your selected cartella'
                                             : 'Taken by another player'
-                                        : isPreviewSelected
-                                            ? 'Preview selected - waiting for game'
-                                            : `Click to select cartella #${cartelaNumber} automatically`
+                                        : `Click to select cartella #${cartelaNumber} automatically`
                                 }
                             >
                                 {cartelaNumber}
                                 {isTaken && !takenByMe && <span className="block text-xs">TAKEN</span>}
                                 {takenByMe && <span className="block text-xs">YOURS</span>}
-                                {isPreviewSelected && <span className="block text-xs">PREVIEW</span>}
-                                {!isTaken && !isPreviewSelected && <span className="block text-xs">CLICK</span>}
+                                {!isTaken && <span className="block text-xs">CLICK</span>}
                             </button>
                         );
                     })}
                 </div>
 
-                {/* Selected Cartella Preview */}
-                {selectedCardPreview && (
-                    <div className="mt-6">
-                        <h3 className="text-lg font-semibold text-white mb-3 text-center">
-                            Your Selected Cartella #{selectedCardPreview.cardNumber}
-                        </h3>
-                        <div className="bg-gradient-to-br from-green-900/30 to-blue-900/30 rounded-lg p-4 border border-green-500/30">
-                            <CartellaCard
-                                id={selectedCardPreview.cardNumber}
-                                card={selectedCardPreview.card}
-                                called={[]}
-                                selectedNumber={selectedCardPreview.cardNumber}
-                                isPreview={true}
-                            />
-                            <div className="mt-3 text-center">
-                                <div className="text-sm text-green-300">
-                                    ✅ Cartella selected successfully!
-                                </div>
-                                <div className="text-xs text-gray-400 mt-1">
-                                    Game will start when countdown reaches 0
-                                </div>
-                            </div>
+                {/* Manual Start Registration Button */}
+                {gameState.phase === 'waiting' && connected && (
+                    <div className="mt-6 text-center">
+                        <button
+                            onClick={() => startRegistration()}
+                            className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                        >
+                            🎮 Start Game Registration
+                        </button>
+                        <div className="text-xs text-gray-400 mt-2">
+                            Click to start 15-second registration countdown
                         </div>
                     </div>
                 )}
@@ -475,8 +441,8 @@ export default function CartelaSelection({ onNavigate, stake, onCartelaSelected 
                     <div className="bg-blue-900/30 rounded-lg p-4 border border-blue-500/30">
                         <h3 className="text-lg font-semibold text-blue-300 mb-2">Quick Play Instructions</h3>
                         <div className="text-sm text-gray-300 space-y-1">
-                            <div>• Click any available cartella number to join instantly</div>
-                            <div>• Preview your selected cartella while waiting</div>
+                            <div>• Click "Start Game Registration" to begin</div>
+                            <div>• Then click any available cartella number to join</div>
                             <div>• Game starts automatically when countdown reaches 0</div>
                             <div>• Prize pool increases with each player</div>
                         </div>

@@ -258,26 +258,6 @@ export function useCartellaWebSocket(stake, sessionId) {
         return true;
     }, [connected, send]);
 
-    // Auto-start registration when WebSocket connects
-    useEffect(() => {
-        if (connected && gameState.phase === 'waiting') {
-            console.log('WebSocket connected, starting registration automatically...');
-            setTimeout(() => {
-                startRegistration();
-            }, 500); // Faster start for better UX
-        }
-    }, [connected, gameState.phase, startRegistration]);
-
-    // Auto-start registration when component mounts
-    useEffect(() => {
-        if (connected && gameState.phase === 'waiting') {
-            console.log('Component mounted, auto-starting registration...');
-            setTimeout(() => {
-                startRegistration();
-            }, 1000);
-        }
-    }, [connected, startRegistration]);
-
     return {
         connected,
         gameState,
